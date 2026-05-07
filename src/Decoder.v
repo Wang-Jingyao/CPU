@@ -3,8 +3,102 @@ module Decoder(
     input rst_n,
     input [1:0] alu_op,
     input [31:0] instruction,
-    output [31:0] imm,
-    output [3:0] alu_ctrl_op
+    output reg [4:0] rs1,
+    output reg [4:0] rs2,
+    output reg [4:0] rd,
+    output reg [31:0] imm,
+    output reg [3:0] alu_ctrl_op
 );
+    wire [6:0]opcode=instruction[6:0];
+    wire [3:0]func={instruction[30],instruction[14:12]};
+    always @(*) begin
+        case(opcode)
+            7'b0110011:begin//R-type
+                rs1 = instruction[19:15];
+                rs2 = instruction[24:20];
+                rd = instruction[11:7];
+            end
+            7'b0010011,7'b0000011,7'b1100111:begin//I-type
+                rs1 = instruction[19:15];
+                rd = instruction[11:7];
+                imm = {{20{instruction[31]}},instruction[31:20]};
+            end
+            7'b0100011:begin//S-type
+                rs1 = instruction[19:15];
+                rs2 = instruction[24:20];
+                imm = {{20{instruction[11]}},instruction[31:25],instruction[11:7]};
+            end
+            7'b1100011:begin//B-type
+                rs1 = instruction[19:15];
+                rs2 = instruction[24:20];
+                imm = {{19{instruction[7]}},instruction[31],instruction[7],instruction[30:25],instruction[11:8],1'b0};
+            end
+            7'b1101111:begin//J-type
+                rd = instruction[11:7];
+                imm = {{11{instruction[31]}},instruction[31],instruction[19:12],instruction[20],instruction[30:21],1'b0};
+            end
+            7'b0110111,7'b0010111:begin//U-type
+                rd = instruction[11:7];
+                imm = {instruction[31:12],12'b0};
+            end
+        endcase
 
+        case(opcode)
+            7'b0110011:begin//R-type
+                case(func)
+                    4'b0000:alu_ctrl_op=4'b0000;//add
+                    4'b1000:alu_ctrl_op=4'b0001;//sub
+                    4'b0111:alu_ctrl_op=4'b0010;//and
+                    4'b0110:alu_ctrl_op=4'b0011;//or
+                    4'b0100:alu_ctrl_op=4'b0100;//xor
+                    4'b0001:alu_ctrl_op=4'b0110;//sll
+                    4'b0101:alu_ctrl_op=4'b0111;//srl
+                    4'b0010:alu_ctrl_op=4'b1000;//slt
+                    4'b1101:alu_ctrl_op=4'b1001;//sra
+                    4'b0011:alu_ctrl_op=4'b1010;//sltu
+                endcase
+            end
+            7'b0010011:begin//计算类I
+                case(func[2:0])
+                3'b000:alu_ctrl_op=4'b0000;//addi
+                3'b111:alu_ctrl_op=4'b0010;//andi
+                3'b110:alu_ctrl_op=4'b0011;//ori
+                3'b100:alu_ctrl_op=4'b0100;//xori
+                3'b001:if(func[3]==0)alu_ctrl_op=4'b0110;//slli
+                3'b101:begin
+                    if(func[3]==0)alu_ctrl_op=4'b0111;//srli
+                    if(func[3]==1)alu_ctrl_op=4'b1001;//srai
+                end
+                3'b010:alu_ctrl_op=4'b1000;//slti
+                3'b011:alu_ctrl_op=4'b1010;//sltiu
+                endcase
+            end
+            7'b0000011:begin//load类
+                
+            end
+            7'b0100011:begin//store类
+                
+            end
+            7'b1100011:begin//B-type
+                case(func[2:0])
+                    3'b000:alu_ctrl_op=4'b1011;//beq
+                    3'b001:alu_ctrl_op=4'b1100;//bne
+                    3'b100:alu_ctrl_op=4'b1101;
+                endcase
+            end
+            7'b1101111:begin//jal
+                
+            end
+            7'b1100111:begin//jalr
+            
+            end
+            7'b0110111:begin//lui
+                alu_ctrl_op=4'b0101;
+            end
+            7'b0010111:begin//auipc
+
+            end
+        endcase
+
+    end
 endmodule
