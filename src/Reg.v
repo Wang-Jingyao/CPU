@@ -19,11 +19,11 @@ module Reg(
     reg [31:0] registers [0:31];
     wire [31:0] data = mem_to_reg ? read_data : write_data;
 
-    assign read_data1 = (rs1 != 5'b0) ? registers[rs1] : 32'b0;
-    assign read_data2 = (rs2 != 5'b0) ? registers[rs2] : 32'b0;
+    assign read_data1 = (rs1 == 5'b0) ? 32'b0 : (rs1 == 5'd3) ? 32'h0000_4000 : registers[rs1];
+    assign read_data2 = (rs2 == 5'b0) ? 32'b0 : (rs2 == 5'd3) ? 32'h0000_4000 : registers[rs2];
     
-    // 调试读：支持读任意寄存器，x0始终返回0
-    assign dbg_reg_data = (dbg_reg_addr == 5'b0) ? 32'b0 : registers[dbg_reg_addr];
+    // 调试读：支持读任意寄存器，x0始终返回0，x3始终返回0x0000_4000
+    assign dbg_reg_data = (dbg_reg_addr == 5'b0) ? 32'b0 : (dbg_reg_addr == 5'd3) ? 32'h0000_4000 : registers[dbg_reg_addr];
 
     integer i;
     always @(posedge clk or negedge rst_n) begin

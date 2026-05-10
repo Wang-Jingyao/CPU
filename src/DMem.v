@@ -4,7 +4,7 @@
  *       只负责把数据区访问送入 Mem，并对 MMIO 地址空间进行译码处理（异步读，无延迟）。
  *
  * 内存模型约定：
- *   1. BRAM 数据区：0x0001_0000 ~ 0x0001_FFFF，交由 Mem 的 B 口处理。
+ *   1. BRAM 数据区：0x0000_0000 ~ 0x0000_FFFF，交由 Mem 的 B 口处理。
  *   2. MMIO 地址空间：0x0010_0000 起，不占用 BRAM，由本模块直接实现。
  *   3. MMIO 寄存器映射如下：
  *      - 0x0010_0000 LED_DATA   [7:0]  ：8 个 LED 输出，1 亮 0 灭
@@ -105,7 +105,7 @@ module DMem(
     reg [3:0] bram_we_r;
     reg [31:0] bram_wdata_r;
     wire [31:0] mmio_rdata;
-    assign bram_access = (address[31:16] == 16'h0001);
+    assign bram_access = (address[31:16] == 16'h0000);
     assign mmio_access = (address[31:16] == 16'h0010);
     
     assign mem_addr = address[16:2];

@@ -14,11 +14,11 @@
  * 内存模型（字节地址）：
  *   1. BRAM空间（本模块实际存储，128KB）：0x0000_0000 ~ 0x0001_FFFF。
  *   2. A口( addra / wea / wdataa / rdataa )：仅用于指令与 ecall 固定指令。
- *      - 指令区：0x0000_0000 ~ 0x0000_EFFF。
- *      - ecall 固定指令区：0x0000_F000 ~ 0x0000_FFFF。
+ *      - 指令区：0x0001_0000 ~ 0x0001_EFFF。
+ *      - ecall 固定指令区：0x0001_F000 ~ 0x0001_FFFF。
  *      （ECALL文件大小尚不确定，此约定可能发生变化）
  *   3. B口( addrb / web / wdatab / rdatab )：仅用于 BRAM 内的数据区。
- *      - 数据区：0x0001_0000 ~ 0x0001_FFFF。
+ *      - 数据区：0x0000_0000 ~ 0x0000_FFFF。
  *   4. 内存IO不占用 BRAM，放在独立 MMIO 地址空间：
  *      - MMIO 基地址：0x0010_0000。
  *   5. 说明：本模块不做端口访问权限与地址合法性检查，默认由上层地址译码保证；
@@ -61,7 +61,7 @@ module Mem #(
         if (INIT_FILE != "") begin
             $readmemh(INIT_FILE, mem);
         end else if (ECALL_FILE != "") begin
-            $readmemh(ECALL_FILE, mem, 15'h3C00);
+            $readmemh(ECALL_FILE, mem, 15'h7C00);  // 0x0001_F000 对应字地址 0x7C00
         end
     end
 
