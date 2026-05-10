@@ -31,9 +31,9 @@ module IMem(
     output [31:0] mem_wdata
 );
 
-    assign mem_addr = address[16:2];
+    assign mem_addr = {1'b1, address[15:2]};
     assign mem_we = 4'b0000;
     assign mem_wdata = 32'b0;
-    assign instruction = (rst_n && (address[31:16] == 16'h0001)) ? mem_rdata : 32'b0;
+    assign instruction = (rst_n && (address[31:16] == 16'h0000)) ? mem_rdata : 32'b0;
 
 endmodule
