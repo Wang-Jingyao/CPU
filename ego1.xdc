@@ -1,6 +1,6 @@
 # 时钟信号 100MHz
-set_property PACKAGE_PIN P17   [get_ports {clk_100m}]
-set_property IOSTANDARD LVCMOS33 [get_ports {clk_100m}]
+set_property PACKAGE_PIN P17   [get_ports {clk}]
+set_property IOSTANDARD LVCMOS33 [get_ports {clk}]
 
 # 复位按键（低有效）
 set_property PACKAGE_PIN P15  [get_ports {rst_n}]
@@ -21,10 +21,6 @@ set_property PACKAGE_PIN M4 [get_ports {sw[2]}]
 set_property PACKAGE_PIN N4 [get_ports {sw[1]}]
 set_property PACKAGE_PIN R1 [get_ports {sw[0]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {sw[*]}]
-
-# 未消抖确认键
-set_property PACKAGE_PIN R11 [get_ports {btn_undebounced}] ;
-set_property IOSTANDARD LVCMOS33 [get_ports {btn_undebounced}]
 
 # LED 指示灯 led[7:0]
 set_property PACKAGE_PIN F6 [get_ports {led[7]}] ;# LED7

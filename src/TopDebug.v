@@ -2,7 +2,7 @@
 
 module TopDebug (
     input         clk,        // 100MHz system clock (EGO1：P17)
-    input         rst,        // Active-low reset button (EGO1：P15)
+    input         rst_n,        // Active-low reset button (EGO1：P15)
     // UART
     input         uart_rxd,   // PC to FPGA (EGO1：N5)
     output        uart_txd,   // FPGA to PC (EGO1：T4)
@@ -140,7 +140,6 @@ CPU uCPU (
     // Peripherals
     .sw           (sw),
     .led          (led),
-    .halt_led     (halt_led),
     .seg_sel_left (seg_sel_left),
     .seg_data_left(seg_data_left),
     .seg_sel_right(seg_sel_right),
@@ -155,9 +154,6 @@ CPU uCPU (
 // 暂停LED直接连接到CPU的halt状态
 assign halt_led = cpu_halt;
 
-// 右边7段数码管暂时关闭（全灭）
-assign seg_sel_right = 4'b1111;  // 位选全为1，关闭显示
-assign seg_data_right = 8'b11111111;  // 段选全为1，关闭显示
 
 
 endmodule

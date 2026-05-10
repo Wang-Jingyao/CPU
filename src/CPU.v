@@ -32,7 +32,6 @@ module CPU (
 
     input [7:0] sw,
     output [7:0] led,
-    input halt_led,
     input [3:0] seg_sel_left,
     output [7:0] seg_data_left,
     input [3:0] seg_sel_right,
