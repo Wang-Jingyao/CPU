@@ -33,7 +33,7 @@ UartRx #(
     .BAUD(115200)
 ) uUartRx (
     .clk     (clk),
-    .rst_n   (rst),
+    .rst_n   (rst_n),
     .rx_pin  (uart_rxd),
     .rx_data (rx_data),
     .rx_valid(rx_valid)
@@ -44,7 +44,7 @@ UartTx #(
     .BAUD(115200)
 ) uUartTx (
     .clk     (clk),
-    .rst_n   (rst),
+    .rst_n   (rst_n),
     .tx_data (tx_data),
     .tx_start(tx_start),
     .tx_busy (tx_busy),
@@ -77,7 +77,7 @@ wire [63:0] time_value;
 
 ClockTimer uClkTimer (
     .clk      (clk),
-    .rst_n    (rst),
+    .rst_n    (rst_n),
     .clk_50m  (clk_50m),
     .clk_25m  (clk_25m),
     .clk_1m   (clk_1m),
@@ -86,7 +86,7 @@ ClockTimer uClkTimer (
 
 DebugController uDebugCtrl (
     .clk          (clk),
-    .rst_n        (rst),
+    .rst_n        (rst_n),
     // UART
     .rx_data      (rx_data),
     .rx_valid     (rx_valid),
@@ -123,7 +123,7 @@ DebugController uDebugCtrl (
 CPU uCPU (
     .clk          (clk_1m),
     .clk_bram     (clk_50m),
-    .rst_n        (rst),
+    .rst_n        (rst_n),
     
     // CPU control
     .cpu_halt     (cpu_halt),
