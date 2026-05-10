@@ -70,6 +70,19 @@ wire        dmem_wr_en;
 wire [31:0] dmem_dbg_addr;
 wire [31:0] dmem_wr_data;
 wire [31:0] dmem_rd_data;
+wire        clk_50m;
+wire        clk_25m;
+wire        clk_1m;
+wire [63:0] time_value;
+
+ClockTimer uClkTimer (
+    .clk      (clk),
+    .rst_n    (rst),
+    .clk_50m  (clk_50m),
+    .clk_25m  (clk_25m),
+    .clk_1m   (clk_1m),
+    .time_value(time_value)
+);
 
 DebugController uDebugCtrl (
     .clk          (clk),
@@ -108,7 +121,8 @@ DebugController uDebugCtrl (
 // ================================
 
 CPU uCPU (
-    .clk          (clk),
+    .clk          (clk_1m),
+    .clk_bram     (clk_50m),
     .rst_n        (rst),
     
     // CPU control
@@ -143,7 +157,8 @@ CPU uCPU (
     .seg_sel_left (seg_sel_left),
     .seg_data_left(seg_data_left),
     .seg_sel_right(seg_sel_right),
-    .seg_data_right(seg_data_right)
+    .seg_data_right(seg_data_right),
+    .time_value   (time_value)
 );
 
 

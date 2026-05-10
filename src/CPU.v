@@ -2,6 +2,7 @@
 
 module CPU (
     input        clk,
+    input        clk_bram,
     input        rst_n,
 
     // CPU control
@@ -35,7 +36,8 @@ module CPU (
     input [3:0] seg_sel_left,
     output [7:0] seg_data_left,
     input [3:0] seg_sel_right,
-    output [7:0] seg_data_right
+    output [7:0] seg_data_right,
+    input [63:0] time_value
 );
 
     // ==================== CPU控制状态机 ====================
@@ -135,7 +137,7 @@ module CPU (
     Mem #(
         .ADDR_WIDTH(15)
     ) mem_inst (
-        .clk(clk),
+        .clk(clk_bram),
         .wea(mem_a_access ? dbg_mem_a_we : mem_we_a),
         .addra(mem_a_access ? dbg_mem_a_addr : mem_addr_a),
         .wdataa(mem_a_access ? dbg_mem_a_wdata : mem_wdata_a),
@@ -243,16 +245,6 @@ module CPU (
         .rand_num(rand_num)
     );
     
-    // 计时器（64位）- 简单实现：自由运行计数器
-    reg [63:0] timer_counter;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            timer_counter <= 64'b0;
-        end else begin
-            timer_counter <= timer_counter + 64'b1;
-        end
-    end
-    
     DMem dmem_inst (
         .clk(clk),
         .rst_n(rst_n && !cpu_reset),
@@ -266,7 +258,7 @@ module CPU (
         .mem_we(mem_we_b),
         .mem_wdata(mem_wdata_b),
         .sw_data(sw),
-        .time_value(timer_counter),
+        .time_value(time_value),
         .kbd_data(8'b0),      // 键盘暂未实现
         .rand_num(rand_num),  // 连接随机数生成器
         .led_data(led),
