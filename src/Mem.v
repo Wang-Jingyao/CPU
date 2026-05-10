@@ -16,6 +16,8 @@
  *   2. A口( addra / wea / wdataa / rdataa )：仅用于指令与 ecall 固定指令。
  *      - 指令区：0x0001_0000 ~ 0x0001_EFFF。
  *      - ecall 固定指令区：0x0001_F000 ~ 0x0001_FFFF。
+ *      - 取指模块 IMem 会把 CPU 指令地址 0x0000_0000 ~ 0x0000_FFFF 映射到
+ *        这个物理指令区。
  *      （ECALL文件大小尚不确定，此约定可能发生变化）
  *   3. B口( addrb / web / wdatab / rdatab )：仅用于 BRAM 内的数据区。
  *      - 数据区：0x0000_0000 ~ 0x0000_FFFF。

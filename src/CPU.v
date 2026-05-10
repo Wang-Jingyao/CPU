@@ -124,7 +124,7 @@ module CPU (
     
     // A口地址多选（指令取指 vs 调试）
     assign mem_a_access = inst_dbg_en;
-    assign dbg_mem_a_addr = inst_dbg_addr[16:2];
+    assign dbg_mem_a_addr = {1'b1, inst_dbg_addr[15:2]};
     assign dbg_mem_a_we = inst_wr_en ? 4'b1111 : 4'b0000;
     assign dbg_mem_a_wdata = inst_wr_data;
     
