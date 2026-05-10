@@ -57,10 +57,10 @@ set_property IOSTANDARD LVCMOS33 [get_ports {seg_data_right[*]}]
 
 # 单个数码管（显示操作状态）
 ## 位选 seg_sel_left
-set_property PACKAGE_PIN G1 [get_ports {seg_sel_left[3]}] ;# AN3
-set_property PACKAGE_PIN F1 [get_ports {seg_sel_left[2]}] ;# AN2
-set_property PACKAGE_PIN E1 [get_ports {seg_sel_left[1]}] ;# AN1
-set_property PACKAGE_PIN G6 [get_ports {seg_sel_left[0]}] ;# AN0
+set_property PACKAGE_PIN G2 [get_ports {seg_sel_left[3]}] ;# AN3
+set_property PACKAGE_PIN C2 [get_ports {seg_sel_left[2]}] ;# AN2
+set_property PACKAGE_PIN C1 [get_ports {seg_sel_left[1]}] ;# AN1
+set_property PACKAGE_PIN H1 [get_ports {seg_sel_left[0]}] ;# AN0
 set_property IOSTANDARD LVCMOS33 [get_ports {seg_sel_left[*]}]
 ## 段选 seg_data_left[7:0]
 set_property PACKAGE_PIN D5 [get_ports {seg_data_left[0]}]
