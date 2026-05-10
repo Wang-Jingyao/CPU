@@ -1,6 +1,6 @@
 /*******************************************************************************
  * 名称：Mem
- * 描述：支持字节级写使能的同步双端口 Write-First BRAM。
+ * 描述：支持字节级写使能的同步双端口 Read-First BRAM。
  *
  * 使用方法：
  *   1. 本模块接收【字对齐地址】。使用时将字节地址截断最低两位后接入，
@@ -26,7 +26,7 @@
  *
  * 注意事项：
  *   1. 读数据在时钟上升沿更新，存在 1 个时钟周期时序延迟。
- *   2. 同一端口在同一时钟沿对同一地址读写时，rdata 返回写入后的新值。
+ *   2. 同一端口在同一时钟沿对同一地址读写时，rdata 返回写入前的旧值。
  *   3. 若 A/B 口同一时钟同时写同一地址，结果依赖底层器件行为，应在上层设计避免。
  *   4. 在 Vivado 仿真中，若 INIT_FILE/ECALL_FILE 非绝对路径，初始化文件应置于
  *      工程目录\工程名.sim\sim_1\behav\xsim。
@@ -55,9 +55,6 @@ module Mem #(
 );
 
     (* ram_style = "block" *) reg [31:0] mem [0:(1<<ADDR_WIDTH)-1];
-    reg [31:0] mergea;
-    reg [31:0] mergeb;
-
     integer i;
     initial begin
         for (i = 0; i < (1<<ADDR_WIDTH); i = i + 1) mem[i] = 32'b0;
@@ -69,25 +66,19 @@ module Mem #(
     end
 
     always @(posedge clk) begin
-        mergea = mem[addra];
-        if (wea[3]) mergea[31:24] = wdataa[31:24];
-        if (wea[2]) mergea[23:16] = wdataa[23:16];
-        if (wea[1]) mergea[15:8]  = wdataa[15:8];
-        if (wea[0]) mergea[7:0]   = wdataa[7:0];
-
-        if (|wea) mem[addra] <= mergea;
-        rdataa <= mergea;
+        rdataa <= mem[addra];
+        if (wea[3]) mem[addra][31:24] <= wdataa[31:24];
+        if (wea[2]) mem[addra][23:16] <= wdataa[23:16];
+        if (wea[1]) mem[addra][15:8]  <= wdataa[15:8];
+        if (wea[0]) mem[addra][7:0]   <= wdataa[7:0];
     end
 
     always @(posedge clk) begin
-        mergeb = mem[addrb];
-        if (web[3]) mergeb[31:24] = wdatab[31:24];
-        if (web[2]) mergeb[23:16] = wdatab[23:16];
-        if (web[1]) mergeb[15:8]  = wdatab[15:8];
-        if (web[0]) mergeb[7:0]   = wdatab[7:0];
-
-        if (|web) mem[addrb] <= mergeb;
-        rdatab <= mergeb;
+        rdatab <= mem[addrb];
+        if (web[3]) mem[addrb][31:24] <= wdatab[31:24];
+        if (web[2]) mem[addrb][23:16] <= wdatab[23:16];
+        if (web[1]) mem[addrb][15:8]  <= wdatab[15:8];
+        if (web[0]) mem[addrb][7:0]   <= wdatab[7:0];
     end
 
 endmodule
