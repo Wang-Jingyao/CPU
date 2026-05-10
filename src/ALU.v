@@ -16,94 +16,48 @@
 // 暂定，后续根据实际需求调整
 
 module ALU(
-    input clk,
-    input rst_n,
     input [1:0] alu_op,
     input [3:0] alu_ctrl_op,
     input alu_src,
     input [31:0] read_data1,
     input [31:0] read_data2,
     input [31:0] imm,
-    output reg zero,
-    output reg [31:0] alu_result
+    output wire zero,
+    output wire [31:0] alu_result
 );
 
     wire [31:0] operand1 = read_data1;
     wire [31:0] operand2 = alu_src ? imm : read_data2;
+    wire [31:0] alu_result_comb;
+    wire zero_comb;
 
-    always @(*) begin
-        case (alu_op)
-            2'b00: alu_result = operand1 + operand2; // 加法类（load/store, auipc, jalr, addi）
-            2'b01: alu_result = operand1 - operand2; // 减法类（分支比较）
-            2'b10: begin
-                case (alu_ctrl_op)
-                    4'b0000:
-                    begin
-                        alu_result = operand1 + operand2; // add, addi
-                    end
-                    4'b0001: 
-                    begin
-                        alu_result = operand1 - operand2; // sub, subi
-                    end
-                    4'b0010: 
-                    begin
-                        alu_result = operand1 & operand2; // and, andi
-                    end
-                    4'b0011: 
-                    begin
-                        alu_result = operand1 | operand2; // or, ori
-                    end
-                    4'b0100: 
-                    begin
-                        alu_result = operand1 ^ operand2; // xor, xori
-                    end
-                    4'b0101: 
-                    begin
-                        alu_result = operand2 << 12; // lui
-                    end
-                    4'b0110: 
-                    begin
-                        alu_result = operand1 << operand2; // sll, slli
-                    end
-                    4'b0111: 
-                    begin
-                        alu_result = operand1 >> operand2; // srl, srli
-                    end
-                    4'b1000: 
-                    begin
-                        alu_result = ($signed(operand1) < $signed(operand2)) ? 32'b1 : 32'b0; // slt, slti
-                    end
-                    4'b1001: 
-                    begin
-                        alu_result = $signed(operand1) >>> operand2; // sra, srai
-                    end
-                    4'b1010: 
-                    begin
-                        alu_result = (operand1 < operand2) ? 32'b1 : 32'b0; // sltu, sltui
-                    end
-                    4'b1011: 
-                    begin
-                        alu_result = (operand1 == operand2) ? 32'b1 : 32'b0; // beq
-                    end
-                    4'b1100: 
-                    begin
-                        alu_result = (operand1 != operand2) ? 32'b1 : 32'b0; // bne
-                    end
-                    4'b1101:
-                    begin
-                        alu_result = (operand1 < operand2) ? 32'b1 : 32'b0; // blt
-                    end
-                    default: alu_result = 32'b0;
-                endcase
-            end
-        endcase
-    end
+    assign alu_result = alu_result_comb;
+    assign zero = zero_comb;
 
-    always @(*) begin
-    if (alu_ctrl_op == 4'b1100 || alu_ctrl_op == 4'b1101) begin
-        zero = (alu_result == 32'b0) ? 1'b0 : 1'b1;
-    end else begin
-        zero = (alu_result == 32'b0) ? 1'b1 : 1'b0;
-    end
-    end
+    // ALU 运算结果生成（组合逻辑）
+    assign alu_result_comb = (alu_op == 2'b00) ? (operand1 + operand2) :  // 加法类
+                             (alu_op == 2'b01) ? (operand1 - operand2) :  // 减法类
+                             (alu_op == 2'b10) ? (
+                                 (alu_ctrl_op == 4'b0000) ? (operand1 + operand2) :  // add, addi
+                                 (alu_ctrl_op == 4'b0001) ? (operand1 - operand2) :  // sub, subi
+                                 (alu_ctrl_op == 4'b0010) ? (operand1 & operand2) :  // and, andi
+                                 (alu_ctrl_op == 4'b0011) ? (operand1 | operand2) :  // or, ori
+                                 (alu_ctrl_op == 4'b0100) ? (operand1 ^ operand2) :  // xor, xori
+                                 (alu_ctrl_op == 4'b0101) ? (operand2 << 12) :        // lui
+                                 (alu_ctrl_op == 4'b0110) ? (operand1 << operand2[4:0]) :  // sll, slli
+                                 (alu_ctrl_op == 4'b0111) ? (operand1 >> operand2[4:0]) :  // srl, srli
+                                 (alu_ctrl_op == 4'b1000) ? (($signed(operand1) < $signed(operand2)) ? 32'b1 : 32'b0) :  // slt, slti
+                                 (alu_ctrl_op == 4'b1001) ? ($signed(operand1) >>> operand2[4:0]) :  // sra, srai
+                                 (alu_ctrl_op == 4'b1010) ? ((operand1 < operand2) ? 32'b1 : 32'b0) :  // sltu, sltui
+                                 (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 32'b1 : 32'b0) :  // beq
+                                 (alu_ctrl_op == 4'b1100) ? ((operand1 != operand2) ? 32'b1 : 32'b0) :  // bne
+                                 (alu_ctrl_op == 4'b1101) ? ((operand1 < operand2) ? 32'b1 : 32'b0) :  // blt
+                                 32'b0
+                             ) : 32'b0;
+
+    // Zero 标志生成（组合逻辑）
+    assign zero_comb = (alu_ctrl_op == 4'b1100 || alu_ctrl_op == 4'b1101) ? 
+                       (alu_result_comb != 32'b0) :  // bne, blt: 结果非0表示分支成立
+                       (alu_result_comb == 32'b0);    // 其他: 结果为0表示zero成立
+
 endmodule

@@ -1,6 +1,4 @@
 module Control(
-    input clk,
-    input rst_n,
     input [6:0] opcode,
     output reg branch,
     output reg mem_read,

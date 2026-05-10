@@ -1,7 +1,7 @@
 /*******************************************************************************
  * 名称：DMem
  * 描述：数据存取与内存映射 I/O 封装模块。该模块本身不直接存储 BRAM，
- *       只负责把数据区访问送入 Mem，并对 MMIO 地址空间进行译码与寄存器化处理。
+ *       只负责把数据区访问送入 Mem，并对 MMIO 地址空间进行译码处理（异步读，无延迟）。
  *
  * 内存模型约定：
  *   1. BRAM 数据区：0x0001_0000 ~ 0x0001_FFFF，交由 Mem 的 B 口处理。
@@ -17,14 +17,11 @@
  *      - 0x0010_001C RAND_NUM   [31:0] ：随机数，只读
  *
  * 读写时序：
- *   1. BRAM 读：读优先。时序逻辑，mem_rdata 延迟 1 个时钟周期返回；
- *              同一周期同址读写时返回写入前旧值，read_data 与 mem_rdata 同周期输出。
- *   2. MMIO 读：时序逻辑。mmio_rdata 在组合逻辑中生成，在下一个 clk 上升沿锁存；
- *              实现与 BRAM 相同的 1 周期延迟。同一周期同址读写时读路径通过旁路返回 write_data。
- *   3. BRAM 写：时序逻辑。写控制信号（mem_we、mem_wdata）在组合逻辑中计算，
- *              在下一个 clk 上升沿由 Mem 执行实际写操作，延迟 1 个周期。
- *   4. MMIO 写：写优先。led_data / seg_data / seg_an 在时钟上升沿更新；
- *              同一周期同址读写时，读路径通过旁路直接返回本拍 write_data。
+ *   1. BRAM 读：异步读。mem_rdata 当周期通过组合逻辑输出，无时序延迟。
+ *   2. MMIO 读：异步读。mmio_rdata 在组合逻辑中生成并当周期输出，无延迟。
+ *   3. BRAM 写：同步。写控制信号（mem_we、mem_wdata）在组合逻辑中计算，
+ *              在下一个 clk 上升沿由 Mem 执行实际写操作。
+ *   4. MMIO 写：同步。led_data / seg_data / seg_an 在时钟上升沿更新。
  *
  *   本模块仅对 0x0010_0000 地址段做 MMIO 译码，其余非数据区、非 MMIO 地址读出为 0。
  *
@@ -70,7 +67,7 @@ module DMem(
     input [2:0] type,
     input [31:0] address,
     input [31:0] write_data,
-    output reg [31:0] read_data,
+    output wire [31:0] read_data,
     
     input [31:0] mem_rdata,
     output [14:0] mem_addr,
@@ -107,14 +104,7 @@ module DMem(
     wire mmio_access;
     reg [3:0] bram_we_r;
     reg [31:0] bram_wdata_r;
-    reg [31:0] mmio_rdata;
-    reg [31:0] mmio_rdata_r;
-    reg [1:0] address_r;
-    reg [2:0] type_r;
-    reg mmio_access_r;
-    reg bram_access_r;
-    reg mem_write_r;
-    reg [31:0] write_data_r;
+    wire [31:0] mmio_rdata;
     assign bram_access = (address[31:16] == 16'h0001);
     assign mmio_access = (address[31:16] == 16'h0010);
     
@@ -173,23 +163,17 @@ module DMem(
     end
 
     // 生成 MMIO 读数据
-    always @(*) begin
-        mmio_rdata = 32'b0;
-
-        if (mmio_access) begin
-            case (address)
-                LED_DATA_ADDR:  mmio_rdata = (mem_write) ? {24'b0, write_data[7:0]} : {24'b0, led_data};
-                SW_DATA_ADDR:   mmio_rdata = {24'b0, sw_data};
-                SEG_DATA_ADDR:  mmio_rdata = (mem_write) ? {24'b0, write_data[7:0]} : {24'b0, seg_data};
-                SEG_AN_ADDR:    mmio_rdata = (mem_write) ? {24'b0, write_data[7:0]} : {24'b0, seg_an};
-                TIME_LOW_ADDR:  mmio_rdata = time_value[31:0];
-                TIME_HIGH_ADDR: mmio_rdata = time_value[63:32];
-                KBD_DATA_ADDR:  mmio_rdata = {24'b0, kbd_data};
-                RAND_NUM_ADDR:  mmio_rdata = rand_num;
-                default:        mmio_rdata = 32'b0;
-            endcase
-        end
-    end
+    assign mmio_rdata = (mmio_access) ? (
+        (address == LED_DATA_ADDR)  ? ((mem_write) ? {24'b0, write_data[7:0]} : {24'b0, led_data}) :
+        (address == SW_DATA_ADDR)   ? {24'b0, sw_data} :
+        (address == SEG_DATA_ADDR)  ? ((mem_write) ? {24'b0, write_data[7:0]} : {24'b0, seg_data}) :
+        (address == SEG_AN_ADDR)    ? ((mem_write) ? {24'b0, write_data[7:0]} : {24'b0, seg_an}) :
+        (address == TIME_LOW_ADDR)  ? time_value[31:0] :
+        (address == TIME_HIGH_ADDR) ? time_value[63:32] :
+        (address == KBD_DATA_ADDR)  ? {24'b0, kbd_data} :
+        (address == RAND_NUM_ADDR)  ? rand_num :
+        32'b0
+    ) : 32'b0;
 
     // BRAM 读和 MMIO 读
     function [31:0] extract_value;
@@ -242,41 +226,18 @@ module DMem(
             endcase
         end
     endfunction
-    always @(*) begin
-        read_data = 32'b0;
-        if (mmio_access_r && mem_write_r) begin
-            read_data = extract_value(write_data_r, type_r, address_r);
-        end else if (mmio_access_r) begin
-            read_data = extract_value(mmio_rdata_r, type_r, address_r);
-        end else if (bram_access_r) begin
-            read_data = extract_value(mem_rdata, type_r, address_r);
-        end
-    end
+    assign read_data = (mmio_access && mem_write) ? extract_value(write_data, type, address[1:0]) :
+                       (mmio_access) ? extract_value(mmio_rdata, type, address[1:0]) :
+                       (bram_access) ? extract_value(mem_rdata, type, address[1:0]) :
+                       32'b0;
 
-    // 读数据路径锁存与 MMIO 写
+    // MMIO 写和 LED/SEG 输出更新
     always @(posedge clk) begin
         if (!rst_n) begin
             led_data <= 8'b0;
             seg_data <= 8'b0;
             seg_an <= 8'b0;
-            mmio_rdata_r <= 32'b0;
-            address_r <= 2'b0;
-            type_r <= 3'b0;
-            mmio_access_r <= 1'b0;
-            bram_access_r <= 1'b0;
-            mem_write_r <= 1'b0;
-            write_data_r <= 32'b0;
         end else begin
-            // 锁存读数据路径控制信息
-            mmio_rdata_r <= mmio_rdata;
-            address_r <= address[1:0];
-            type_r <= type;
-            mmio_access_r <= mmio_access;
-            bram_access_r <= bram_access;
-            mem_write_r <= mem_write;
-            write_data_r <= write_data;
-            
-            // MMIO 写
             if (mmio_access) begin
                 case (address)
                     LED_DATA_ADDR: begin
