@@ -123,16 +123,42 @@ module CPU (
     // ==================== Mem 模块（双端口 BRAM）====================
     
     // A口地址多选（指令取指 vs 调试）
-    assign mem_a_access = inst_dbg_en;
-    assign dbg_mem_a_addr = {1'b1, inst_dbg_addr[15:2]};
-    assign dbg_mem_a_we = inst_wr_en ? 4'b1111 : 4'b0000;
-    assign dbg_mem_a_wdata = inst_wr_data;
+    // 可能使用握手会更好
+    reg         inst_dbg_en_r;
+    reg [3:0]   inst_dbg_we_r;
+    reg [14:0]  inst_dbg_addr_r;
+    reg [31:0]  inst_dbg_wdata_r;
+
+    always @(posedge clk_bram) begin
+        inst_dbg_en_r   <= inst_dbg_en;
+        inst_dbg_we_r   <= inst_wr_en ? 4'b1111 : 4'b0000;
+        inst_dbg_addr_r <= {1'b1, inst_dbg_addr[15:2]};
+        inst_dbg_wdata_r<= inst_wr_data;
+    end
+
+    assign mem_a_access = inst_dbg_en_r;
+    assign dbg_mem_a_addr = inst_dbg_addr_r;
+    assign dbg_mem_a_we = inst_dbg_we_r;
+    assign dbg_mem_a_wdata = inst_dbg_wdata_r;
     
     // B口地址多选（数据访问 vs 调试）
-    assign mem_b_access = dmem_dbg_en;
-    assign dbg_mem_b_addr = dmem_dbg_addr[16:2];
-    assign dbg_mem_b_we = dmem_wr_en ? 4'b1111 : 4'b0000;
-    assign dbg_mem_b_wdata = dmem_wr_data;
+    // 可能使用握手会更好
+    reg         dmem_dbg_en_r;
+    reg [3:0]   dmem_dbg_we_r;
+    reg [14:0]  dmem_dbg_addr_r;
+    reg [31:0]  dmem_dbg_wdata_r;
+
+    always @(posedge clk_bram) begin
+        dmem_dbg_en_r    <= dmem_dbg_en;
+        dmem_dbg_we_r    <= dmem_wr_en ? 4'b1111 : 4'b0000;
+        dmem_dbg_addr_r  <= dmem_dbg_addr[16:2];
+        dmem_dbg_wdata_r <= dmem_wr_data;
+    end
+
+    assign mem_b_access = dmem_dbg_en_r;
+    assign dbg_mem_b_addr = dmem_dbg_addr_r;
+    assign dbg_mem_b_we = dmem_dbg_we_r;
+    assign dbg_mem_b_wdata = dmem_dbg_wdata_r;
     
     Mem #(
         .ADDR_WIDTH(15)
