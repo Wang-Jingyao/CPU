@@ -47,7 +47,10 @@ module ALU(
                                  (alu_ctrl_op == 4'b0110) ? (operand1 << operand2[4:0]) :  // sll, slli
                                  (alu_ctrl_op == 4'b0111) ? (operand1 >> operand2[4:0]) :  // srl, srli
                                  (alu_ctrl_op == 4'b1000) ? (($signed(operand1) < $signed(operand2)) ? 32'b1 : 32'b0) :  // slt, slti
-                                 (alu_ctrl_op == 4'b1001) ? ($signed(operand1) >>> operand2[4:0]) :  // sra, srai
+                                 (alu_ctrl_op == 4'b1001) ? ( (operand1[31] == 1'b1) ? 
+                                      ((operand1 >> operand2[4:0]) | (~(32'hffffffff >> operand2[4:0]))) :
+                                      (operand1 >> operand2[4:0]) 
+                                    ) :  // sra, srai
                                  (alu_ctrl_op == 4'b1010) ? ((operand1 < operand2) ? 32'b1 : 32'b0) :  // sltu, sltui
                                  (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 32'b1 : 32'b0) :  // beq
                                  (alu_ctrl_op == 4'b1100) ? ((operand1 != operand2) ? 32'b1 : 32'b0) :  // bne
