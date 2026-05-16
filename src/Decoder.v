@@ -1,5 +1,4 @@
 module Decoder(
-    input [1:0] alu_op,
     input [31:0] instruction,
     output reg [4:0] rs1,
     output reg [4:0] rs2,
@@ -10,6 +9,12 @@ module Decoder(
     wire [6:0]opcode=instruction[6:0];
     wire [3:0]func={instruction[30],instruction[14:12]};
     always @(*) begin
+        rs1 = 5'b0;
+        rs2 = 5'b0;
+        rd = 5'b0;
+        imm = 32'b0;
+        alu_ctrl_op = 4'b0000;
+
         case(opcode)
             7'b0110011:begin//R-type
                 rs1 = instruction[19:15];
@@ -95,6 +100,8 @@ module Decoder(
             end
             7'b0010111:begin//auipc
 
+            end
+            default: begin
             end
         endcase
 
