@@ -6,7 +6,7 @@ module PC(
     input [31:0] imm,
     output reg [31:0] address
 );
-    always @(posedge clk or negedge rst_n) begin
+    always @(negedge clk or negedge rst_n) begin
         if (!rst_n) begin
             address <= 32'd0;
         end
