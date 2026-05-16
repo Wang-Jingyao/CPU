@@ -15,6 +15,10 @@
 // 1101: blt
 // 暂定，后续根据实际需求调整
 
+// zero
+// 1: 条件满足，跳转
+// 0: 不跳转
+
 module ALU(
     input [1:0] alu_op,
     input [3:0] alu_ctrl_op,
@@ -59,8 +63,9 @@ module ALU(
                              ) : 32'b0;
 
     // Zero 标志生成（组合逻辑）
-    assign zero_comb = (alu_ctrl_op == 4'b1100 || alu_ctrl_op == 4'b1101) ? 
-                       (alu_result_comb != 32'b0) :  // bne, blt: 结果非0表示分支成立
-                       (alu_result_comb == 32'b0);    // 其他: 结果为0表示zero成立
+    assign zero_comb = (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 1'b1 : 1'b0) :
+                       (alu_ctrl_op == 4'b1100) ? ((operand1 != operand2) ? 1'b1 : 1'b0) : 
+                       (alu_ctrl_op == 4'b1101) ? ((operand1 < operand2) ? 1'b1 : 1'b0) :
+                       1'b0;    // 其他: 结果为0表示zero成立
 
 endmodule

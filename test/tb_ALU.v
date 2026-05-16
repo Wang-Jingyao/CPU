@@ -92,7 +92,7 @@ module tb_ALU;
         // 测试加法结果为0
         read_data1 = 32'hFFFF_FFF0;
         imm = 32'h0000_0010; // 相加 = 0
-        check_output(32'h0000_0000, 1'b1, "ADD overflow to zero, zero=1");
+        check_output(32'h0000_0000, 1'b0, "ADD overflow to zero, zero=0");
 
         // ========================
         // 2. 测试 alu_op = 01 (减法)
@@ -103,7 +103,7 @@ module tb_ALU;
         check_output(32'd30, 1'b0, "SUB: 50-20=30");
         // 结果为0
         read_data1 = 32'd15; read_data2 = 32'd15;
-        check_output(32'd0, 1'b1, "SUB result 0, zero=1");
+        check_output(32'd0, 1'b0, "SUB result 0, zero=0");
 
         // ========================
         // 3. alu_op = 10, 测试各种 alu_ctrl_op
@@ -122,7 +122,7 @@ module tb_ALU;
         check_output(32'd7, 1'b0, "ALU_SUB: 10-3=7");
         // sub 得 0
         read_data1 = 32'd99; read_data2 = 32'd99;
-        check_output(32'd0, 1'b1, "ALU_SUB result 0");
+        check_output(32'd0, 1'b0, "ALU_SUB result 0");
 
         // 3.3 AND (0010)
         alu_ctrl_op = 4'b0010;
@@ -165,12 +165,12 @@ module tb_ALU;
         // 3.9 SLT (1000) 有符号比较
         alu_ctrl_op = 4'b1000;
         read_data1 = 32'd5; read_data2 = 32'd3; // 5 < 3? false -> 0
-        check_output(32'd0, 1'b1, "SLT: 5<3 is false");
+        check_output(32'd0, 1'b0, "SLT: 5<3 is false");
         read_data1 = 32'hFFFF_FFFE; // -2
         read_data2 = 32'd3;         //  3
         check_output(32'd1, 1'b0, "SLT: -2<3 is true");
         read_data1 = 32'd5; read_data2 = 32'd5; // equal
-        check_output(32'd0, 1'b1, "SLT: 5<5 is false");
+        check_output(32'd0, 1'b0, "SLT: 5<5 is false");
 
         // 3.10 SRA (1001) 算术右移
         alu_ctrl_op = 4'b1001;
@@ -184,16 +184,16 @@ module tb_ALU;
         alu_ctrl_op = 4'b1010;
         read_data1 = 32'hFFFF_FFFE; // 很大的无符号数
         read_data2 = 32'd3;
-        check_output(32'd0, 1'b1, "SLTU: large_unsigned < 3 is false");
+        check_output(32'd0, 1'b0, "SLTU: large_unsigned < 3 is false");
         read_data1 = 32'd1; read_data2 = 32'd2;
         check_output(32'd1, 1'b0, "SLTU: 1<2 is true");
 
         // 3.12 BEQ (1011) 相等比较
         alu_ctrl_op = 4'b1011;
         read_data1 = 32'd5; read_data2 = 32'd5;
-        check_output(32'd1, 1'b0, "BEQ: 5==5, result=1, zero=0 (按照你的逻辑)");
+        check_output(32'd1, 1'b1, "BEQ: 5==5, result=1, zero=1");
         read_data1 = 32'd5; read_data2 = 32'd3;
-        check_output(32'd0, 1'b1, "BEQ: 5!=3, result=0, zero=1");
+        check_output(32'd0, 1'b0, "BEQ: 5!=3, result=0, zero=0");
 
         // 3.13 BNE (1100) 不等比较
         alu_ctrl_op = 4'b1100;
