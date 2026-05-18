@@ -10,10 +10,10 @@
  *      - 0x0010_0000 SW_DATA    [7:0]  ：8 位拨码开关输入，只读
  *      - 0x0010_0004 LED_DATA   [7:0]  ：8 个 LED 输出，1 亮 0 灭
  *      - 0x0010_0008 SEG_DATA   [31:0] ：32 位数码管寄存器
- *      - 0x0010_0018 TIME_LOW   [31:0] ：64 位计时器低 32 位
- *      - 0x0010_001C TIME_HIGH  [31:0] ：64 位计时器高 32 位
- *      - 0x0010_0020 KBD_DATA   [7:0]  ：键盘扫描码/ASCII，只读
- *      - 0x0010_0024 RAND_NUM   [31:0] ：随机数，只读
+ *      - 0x0010_000C TIME_LOW   [31:0] ：64 位计时器低 32 位
+ *      - 0x0010_0010 TIME_HIGH  [31:0] ：64 位计时器高 32 位
+ *      - 0x0010_0014 KBD_DATA   [7:0]  ：键盘扫描码/ASCII，只读
+ *      - 0x0010_0018 RAND_NUM   [31:0] ：随机数，只读
  *
  * 读写时序：
  *   1. BRAM 读：由内部 Mem 完成，读数据在时钟沿后有效。
@@ -119,6 +119,7 @@ module DMem(
 
     wire bram_access = (access_address[31:16] == 16'h0000);
     wire mmio_access  = (access_address[31:16] == 16'h0010);
+    wire seg_access   = mmio_access && (access_address[31:2] == SEG_DATA[31:2]);
     wire [13:0] bram_addr = access_address[15:2];
 
     reg [3:0]  bram_we_r;
@@ -153,15 +154,16 @@ module DMem(
                     endcase
                 end
                 TYPE_SH: begin
-                    if (access_address[1] == 1'b0) begin
-                        if (access_address[1:0] == 2'b00) begin
+                    case (access_address[1])
+                        1'b0: begin // 低半字对齐 (尾数 2'b00)
                             bram_we_r = 4'b0011;
                             bram_wdata_r = {16'b0, access_write_data[15:0]};
-                        end else begin
+                        end
+                        1'b1: begin // 高半字对齐 (尾数 2'b10)
                             bram_we_r = 4'b1100;
                             bram_wdata_r = {access_write_data[15:0], 16'b0};
                         end
-                    end
+                    endcase
                 end
                 TYPE_SW: begin
                     if (access_address[1:0] == 2'b00) begin
@@ -190,7 +192,7 @@ module DMem(
     );
 
     // MMIO 写和 LED/SEG 输出更新
-    always @(posedge clk) begin
+    always @(negedge clk) begin
         if (!rst_n) begin
             led_data <= 8'b0;
             seg_data <= 32'b0;
@@ -202,33 +204,32 @@ module DMem(
                     LED_DATA_ADDR: begin
                         if (access_write) led_data <= access_write_data[7:0];
                     end
-                        SEG_DATA: begin
-                            if (access_write) begin
-                                case (access_type)
-                                    TYPE_SB: begin
-                                        case (access_address[1:0])
-                                            2'b00: seg_data[7:0]    <= access_write_data[7:0];
-                                            2'b01: seg_data[15:8]   <= access_write_data[7:0];
-                                            2'b10: seg_data[23:16]  <= access_write_data[7:0];
-                                            2'b11: seg_data[31:24]  <= access_write_data[7:0];
-                                        endcase
-                                    end
-                                    TYPE_SH: begin
-                                        if (access_address[1] == 1'b0) begin
-                                            if (access_address[1:0] == 2'b00) seg_data[15:0] <= access_write_data[15:0];
-                                            else seg_data[31:16] <= access_write_data[15:0];
-                                        end
-                                    end
-                                    TYPE_SW: begin
-                                        if (access_address[1:0] == 2'b00) seg_data <= access_write_data;
-                                    end
-                                    default: begin end
-                                endcase
-                            end
-                        end
                     default: begin
                     end
                 endcase
+
+                if (seg_access && access_write) begin
+                    case (access_type)
+                        TYPE_SB: begin
+                            case (access_address[1:0])
+                                2'b00: seg_data[7:0]    <= access_write_data[7:0];
+                                2'b01: seg_data[15:8]   <= access_write_data[7:0];
+                                2'b10: seg_data[23:16]  <= access_write_data[7:0];
+                                2'b11: seg_data[31:24]  <= access_write_data[7:0];
+                            endcase
+                        end
+                        TYPE_SH: begin
+                            if (access_address[1] == 1'b0) begin
+                                if (access_address[1:0] == 2'b00) seg_data[15:0] <= access_write_data[15:0];
+                                else seg_data[31:16] <= access_write_data[15:0];
+                            end
+                        end
+                        TYPE_SW: begin
+                            if (access_address[1:0] == 2'b00) seg_data <= access_write_data;
+                        end
+                        default: begin end
+                    endcase
+                end
             end
         end
     end
@@ -237,7 +238,23 @@ module DMem(
     assign mmio_rdata = (mmio_access) ? (
         (access_address == SW_DATA_ADDR)   ? {24'b0, sw_data} :
         (access_address == LED_DATA_ADDR)   ? ((access_write) ? {24'b0, access_write_data[7:0]} : {24'b0, led_data}) :
-        (access_address == SEG_DATA) ? ((access_write) ? access_write_data : seg_data) :
+        seg_access ? (
+            access_write ? (
+                (access_type == TYPE_SB) ? (
+                    (access_address[1:0] == 2'b00) ? {seg_data[31:8],  access_write_data[7:0]} :
+                    (access_address[1:0] == 2'b01) ? {seg_data[31:16], access_write_data[7:0], seg_data[7:0]} :
+                    (access_address[1:0] == 2'b10) ? {seg_data[31:24], access_write_data[7:0], seg_data[15:0]} :
+                                                    {access_write_data[7:0], seg_data[23:0]}
+                ) : (access_type == TYPE_SH) ? (
+                    (access_address[1] == 1'b0) ? (
+                        (access_address[1:0] == 2'b00) ? {seg_data[31:16], access_write_data[15:0]} :
+                                                          {access_write_data[15:0], seg_data[15:0]}
+                    ) : seg_data
+                ) : (access_type == TYPE_SW) ? (
+                    (access_address[1:0] == 2'b00) ? access_write_data : seg_data
+                ) : seg_data
+            ) : seg_data
+        ) :
         (access_address == TIME_LOW_ADDR)   ? time_value[31:0] :
         (access_address == TIME_HIGH_ADDR)  ? time_value[63:32] :
         (access_address == KBD_DATA_ADDR)   ? {24'b0, kbd_data} :
