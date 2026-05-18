@@ -1,36 +1,32 @@
 /*******************************************************************************
  * 名称：DMem
- * 描述：数据存取与内存映射 I/O 封装模块。该模块本身不直接存储 BRAM，
- *       只负责把数据区访问送入 Mem，并对 MMIO 地址空间进行译码处理（异步读，无延迟）。
+ * 描述：数据存取与内存映射 I/O 封装模块。该模块内部实例化一个 Mem，只使用 A 口
+ *       处理 BRAM 数据区访问，并对 MMIO 地址空间进行译码处理。
  *
  * 内存模型约定：
- *   1. BRAM 数据区：0x0000_0000 ~ 0x0000_FFFF，交由 Mem 的 B 口处理。
+ *   1. BRAM 数据区：0x0000_0000 ~ 0x0000_FFFF，交由内部 Mem 处理。
  *   2. MMIO 地址空间：0x0010_0000 起，不占用 BRAM，由本模块直接实现。
  *   3. MMIO 寄存器映射如下：
- *      - 0x0010_0000 LED_DATA   [7:0]  ：8 个 LED 输出，1 亮 0 灭
- *      - 0x0010_0004 SW_DATA    [7:0]  ：8 位拨码开关输入，只读
- *      - 0x0010_0008 SEG_DATA   [7:0]  ：数码管段选输出
- *      - 0x0010_000C SEG_AN     [7:0]  ：数码管位选输出
- *      - 0x0010_0010 TIME_LOW   [31:0] ：64 位计时器低 32 位
- *      - 0x0010_0014 TIME_HIGH  [31:0] ：64 位计时器高 32 位
- *      - 0x0010_0018 KBD_DATA   [7:0]  ：键盘扫描码/ASCII，只读
- *      - 0x0010_001C RAND_NUM   [31:0] ：随机数，只读
+ *      - 0x0010_0000 SW_DATA    [7:0]  ：8 位拨码开关输入，只读
+ *      - 0x0010_0004 LED_DATA   [7:0]  ：8 个 LED 输出，1 亮 0 灭
+ *      - 0x0010_0008 SEG_DATA   [31:0] ：32 位数码管寄存器
+ *      - 0x0010_0018 TIME_LOW   [31:0] ：64 位计时器低 32 位
+ *      - 0x0010_001C TIME_HIGH  [31:0] ：64 位计时器高 32 位
+ *      - 0x0010_0020 KBD_DATA   [7:0]  ：键盘扫描码/ASCII，只读
+ *      - 0x0010_0024 RAND_NUM   [31:0] ：随机数，只读
  *
  * 读写时序：
- *   1. BRAM 读：异步读。mem_rdata 当周期通过组合逻辑输出，无时序延迟。
- *   2. MMIO 读：异步读。mmio_rdata 在组合逻辑中生成并当周期输出，无延迟。
- *   3. BRAM 写：同步。写控制信号（mem_we、mem_wdata）在组合逻辑中计算，
- *              在下一个 clk 上升沿由 Mem 执行实际写操作。
- *   4. MMIO 写：同步。led_data / seg_data / seg_an 在时钟上升沿更新。
+ *   1. BRAM 读：由内部 Mem 完成，读数据在时钟沿后有效。
+ *   2. MMIO 读：组合逻辑直接输出。
+ *   3. BRAM 写：写控制信号在组合逻辑中计算，在内部 Mem 的时钟沿执行实际写操作。
+ *   4. MMIO 写：同步。led_data 与 32 位 seg_data 在时钟上升沿更新；seg 的具体显示绑定由外部显示模块负责。
+ *   5. 调试读写使能、地址和写数据在本模块内部同步到 clk 域。
  *
  *   本模块仅对 0x0010_0000 地址段做 MMIO 译码，其余非数据区、非 MMIO 地址读出为 0。
  *
  * 端口说明：
- *   [时钟与复位]
  *   clk         - 时钟
  *   rst_n       - 低有效复位
- *
- *   [CPU 访存主接口]
  *   mem_write   - 数据区写使能
  *   type        - 访存类型编码：
  *                 3'b000 = lb   （字节读，符号扩展）
@@ -44,21 +40,16 @@
  *   address     - 32 位字节地址
  *   write_data  - 写入数据
  *   read_data   - 本模块对外输出的最终读数据
- *
- *   [Mem(BRAM) 接口]
- *   mem_rdata   - 来自 Mem 的 BRAM 读数据
- *   mem_addr    - 送往 Mem 的字地址
- *   mem_we      - 送往 Mem 的字节写使能
- *   mem_wdata   - 送往 Mem 的写数据
- *
- *   [MMIO 外设]
+ *   dbg_en      - 调试访问使能
+ *   dbg_we      - 调试写使能（全字写）
+ *   dbg_addr    - 调试访问字节地址
+ *   dbg_wdata   - 调试写数据
  *   sw_data     - 拨码开关输入
  *   time_value  - 64 位计时器值
  *   kbd_data    - 键盘输入
  *   rand_num    - 随机数输入
  *   led_data    - LED 输出寄存器
- *   seg_data    - 数码管段选寄存器
- *   seg_an      - 数码管位选寄存器
+ *   seg_data    - 合并的 32 位数码管控制寄存器（字节映射用于左右段/位选）
  ******************************************************************************/
 module DMem(
     input clk,
@@ -68,28 +59,28 @@ module DMem(
     input [31:0] address,
     input [31:0] write_data,
     output wire [31:0] read_data,
-    
-    input [31:0] mem_rdata,
-    output [14:0] mem_addr,
-    output [3:0] mem_we,
-    output [31:0] mem_wdata,
 
     input [7:0] sw_data,
     input [63:0] time_value,
     input [7:0] kbd_data,
     input [31:0] rand_num,
     output reg [7:0] led_data,
-    output reg [7:0] seg_data,
-    output reg [7:0] seg_an
+    output reg [31:0] seg_data,
+
+    // --- Debug: Data memory access (uart) ---
+    input  wire        dmem_dbg_en,     // 1 = debug for data memory
+    input  wire        dmem_wr_en,      // 1 = debug write enable
+    input  wire [31:0] dmem_dbg_addr,  // debug byte address
+    input  wire [31:0] dmem_wr_data,   // debug write data
+    output wire [31:0] dmem_rd_data    // debug read data
 );
-    localparam [31:0] LED_DATA_ADDR  = 32'h0010_0000;
-    localparam [31:0] SW_DATA_ADDR   = 32'h0010_0004;
-    localparam [31:0] SEG_DATA_ADDR  = 32'h0010_0008;
-    localparam [31:0] SEG_AN_ADDR    = 32'h0010_000C;
-    localparam [31:0] TIME_LOW_ADDR  = 32'h0010_0010;
-    localparam [31:0] TIME_HIGH_ADDR = 32'h0010_0014;
-    localparam [31:0] KBD_DATA_ADDR  = 32'h0010_0018;
-    localparam [31:0] RAND_NUM_ADDR  = 32'h0010_001C;
+    localparam [31:0] SW_DATA_ADDR   = 32'h0010_0000;
+    localparam [31:0] LED_DATA_ADDR  = 32'h0010_0004;
+    localparam [31:0] SEG_DATA       = 32'h0010_0008;
+    localparam [31:0] TIME_LOW_ADDR   = 32'h0010_000C;
+    localparam [31:0] TIME_HIGH_ADDR  = 32'h0010_0010;
+    localparam [31:0] KBD_DATA_ADDR   = 32'h0010_0014;
+    localparam [31:0] RAND_NUM_ADDR   = 32'h0010_0018;
 
     localparam [2:0] TYPE_LB  = 3'b000;
     localparam [2:0] TYPE_LH  = 3'b001;
@@ -100,60 +91,82 @@ module DMem(
     localparam [2:0] TYPE_LBU = 3'b110;
     localparam [2:0] TYPE_LHU = 3'b111;
 
-    wire bram_access;
-    wire mmio_access;
-    reg [3:0] bram_we_r;
-    reg [31:0] bram_wdata_r;
-    wire [31:0] mmio_rdata;
-    assign bram_access = (address[31:16] == 16'h0000);
-    assign mmio_access = (address[31:16] == 16'h0010);
-    
-    assign mem_addr = address[16:2];
-    assign mem_we = bram_we_r;
-    assign mem_wdata = bram_wdata_r;
+    // Debug signals synchronized to clk (25MHz) domain
+    // DebugController runs at 100MHz, direct access to 25MHz BRAM may cause setup violation
+    reg        dmem_dbg_en_sync;
+    reg        dmem_wr_en_sync;
+    reg [31:0] dmem_dbg_addr_sync;
+    reg [31:0] dmem_wr_data_sync;
 
+    always @(negedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            dmem_dbg_en_sync  <= 1'b0;
+            dmem_wr_en_sync   <= 1'b0;
+            dmem_dbg_addr_sync <= 32'b0;
+            dmem_wr_data_sync  <= 32'b0;
+        end else begin
+            dmem_dbg_en_sync  <= dmem_dbg_en;
+            dmem_wr_en_sync   <= dmem_wr_en;
+            dmem_dbg_addr_sync <= dmem_dbg_addr;
+            dmem_wr_data_sync  <= dmem_wr_data;
+        end
+    end
+
+    wire [31:0] access_address    = dmem_dbg_en_sync ? dmem_dbg_addr_sync : address;
+    wire [31:0] access_write_data = dmem_dbg_en_sync ? dmem_wr_data_sync : write_data;
+    wire        access_write      = dmem_dbg_en_sync ? dmem_wr_en_sync : mem_write;
+    wire [2:0]  access_type       = dmem_dbg_en_sync ? TYPE_SW : type;
+
+    wire bram_access = (access_address[31:16] == 16'h0000);
+    wire mmio_access  = (access_address[31:16] == 16'h0010);
+    wire [13:0] bram_addr = access_address[15:2];
+
+    reg [3:0]  bram_we_r;
+    reg [31:0] bram_wdata_r;
+    wire [31:0] bram_rdata;
+    wire [31:0] mmio_rdata;
     // BRAM 写
     always @(*) begin
         bram_we_r = 4'b0000;
-        bram_wdata_r = write_data;
+        bram_wdata_r = access_write_data;
 
-        if (bram_access && mem_write) begin
-            case (type)
+        if (bram_access && access_write) begin
+            case (access_type)
                 TYPE_SB: begin
-                    case (address[1:0])
+                    case (access_address[1:0])
                         2'b00: begin
                             bram_we_r = 4'b0001;
-                            bram_wdata_r = {24'b0, write_data[7:0]};
+                            bram_wdata_r = {24'b0, access_write_data[7:0]};
                         end
                         2'b01: begin
                             bram_we_r = 4'b0010;
-                            bram_wdata_r = {16'b0, write_data[7:0], 8'b0};
+                            bram_wdata_r = {16'b0, access_write_data[7:0], 8'b0};
                         end
                         2'b10: begin
                             bram_we_r = 4'b0100;
-                            bram_wdata_r = {8'b0, write_data[7:0], 16'b0};
+                            bram_wdata_r = {8'b0, access_write_data[7:0], 16'b0};
                         end
                         2'b11: begin
                             bram_we_r = 4'b1000;
-                            bram_wdata_r = {write_data[7:0], 24'b0};
+                            bram_wdata_r = {access_write_data[7:0], 24'b0};
                         end
                     endcase
                 end
                 TYPE_SH: begin
-                    if (address[1] == 1'b0) begin
-                        if (address[1:0] == 2'b00) begin
+                    if (access_address[1] == 1'b0) begin
+                        if (access_address[1:0] == 2'b00) begin
                             bram_we_r = 4'b0011;
-                            bram_wdata_r = {16'b0, write_data[15:0]};
+                            bram_wdata_r = {16'b0, access_write_data[15:0]};
                         end else begin
                             bram_we_r = 4'b1100;
-                            bram_wdata_r = {write_data[15:0], 16'b0};
+                            bram_wdata_r = {access_write_data[15:0], 16'b0};
                         end
                     end
                 end
                 TYPE_SW: begin
-                    if (address[1:0] == 2'b00) begin
+                    if (access_address[1:0] == 2'b00) begin
                         bram_we_r = 4'b1111;
-                        bram_wdata_r = write_data;
+                        bram_wdata_r = access_write_data;
                     end
                 end
                 default: begin
@@ -162,98 +175,135 @@ module DMem(
         end
     end
 
-    // 生成 MMIO 读数据
-    assign mmio_rdata = (mmio_access) ? (
-        (address == LED_DATA_ADDR)  ? ((mem_write) ? {24'b0, write_data[7:0]} : {24'b0, led_data}) :
-        (address == SW_DATA_ADDR)   ? {24'b0, sw_data} :
-        (address == SEG_DATA_ADDR)  ? ((mem_write) ? {24'b0, write_data[7:0]} : {24'b0, seg_data}) :
-        (address == SEG_AN_ADDR)    ? ((mem_write) ? {24'b0, write_data[7:0]} : {24'b0, seg_an}) :
-        (address == TIME_LOW_ADDR)  ? time_value[31:0] :
-        (address == TIME_HIGH_ADDR) ? time_value[63:32] :
-        (address == KBD_DATA_ADDR)  ? {24'b0, kbd_data} :
-        (address == RAND_NUM_ADDR)  ? rand_num :
-        32'b0
-    ) : 32'b0;
-
-    // BRAM 读和 MMIO 读
-    function [31:0] extract_value;
-        input [31:0] value;
-        input [2:0] access_type;
-        input [1:0] offset;
-        reg [7:0] byte_value;
-        reg [15:0] half_value;
-        begin
-            byte_value = 8'b0;
-            half_value = 16'b0;
-            case (access_type)
-                TYPE_LB, TYPE_LBU: begin
-                    case (offset)
-                        2'b00: byte_value = value[7:0];
-                        2'b01: byte_value = value[15:8];
-                        2'b10: byte_value = value[23:16];
-                        2'b11: byte_value = value[31:24];
-                    endcase
-                    extract_value = (access_type == TYPE_LB) 
-                        ? {{24{byte_value[7]}}, byte_value}
-                        : {24'b0, byte_value};
-                end
-                TYPE_LH, TYPE_LHU: begin
-                    if (offset[0] == 1'b0) begin
-                        if (offset[1] == 1'b0) begin
-                            half_value = value[15:0];
-                        end else begin
-                            half_value = value[31:16];
-                        end
-                        if (access_type == TYPE_LH) begin
-                            extract_value = {{16{half_value[15]}}, half_value};
-                        end else begin
-                            extract_value = {16'b0, half_value};
-                        end
-                    end else begin
-                        extract_value = 32'b0;
-                    end
-                end
-                TYPE_LW: begin
-                    if (offset == 2'b00) begin
-                        extract_value = value;
-                    end else begin
-                        extract_value = 32'b0;
-                    end
-                end
-                default: begin
-                    extract_value = value;
-                end
-            endcase
-        end
-    endfunction
-    assign read_data = (mmio_access && mem_write) ? extract_value(write_data, type, address[1:0]) :
-                       (mmio_access) ? extract_value(mmio_rdata, type, address[1:0]) :
-                       (bram_access) ? extract_value(mem_rdata, type, address[1:0]) :
-                       32'b0;
+    Mem #(
+        .ADDR_WIDTH(14)
+    ) mem_inst (
+        .clk   (clk),
+        .wea   (bram_we_r),
+        .addra (bram_addr),
+        .wdataa(bram_wdata_r),
+        .rdataa(bram_rdata),
+        .web   (4'b0000),
+        .addrb (14'b0),
+        .wdatab(32'b0),
+        .rdatab()
+    );
 
     // MMIO 写和 LED/SEG 输出更新
     always @(posedge clk) begin
         if (!rst_n) begin
             led_data <= 8'b0;
-            seg_data <= 8'b0;
-            seg_an <= 8'b0;
+            seg_data <= 32'b0;
         end else begin
             if (mmio_access) begin
-                case (address)
+                case (access_address)
+                    SW_DATA_ADDR: begin
+                    end
                     LED_DATA_ADDR: begin
-                        if (mem_write) led_data <= write_data[7:0];
+                        if (access_write) led_data <= access_write_data[7:0];
                     end
-                    SEG_DATA_ADDR: begin
-                        if (mem_write) seg_data <= write_data[7:0];
-                    end
-                    SEG_AN_ADDR: begin
-                        if (mem_write) seg_an <= write_data[7:0];
-                    end
+                        SEG_DATA: begin
+                            if (access_write) begin
+                                case (access_type)
+                                    TYPE_SB: begin
+                                        case (access_address[1:0])
+                                            2'b00: seg_data[7:0]    <= access_write_data[7:0];
+                                            2'b01: seg_data[15:8]   <= access_write_data[7:0];
+                                            2'b10: seg_data[23:16]  <= access_write_data[7:0];
+                                            2'b11: seg_data[31:24]  <= access_write_data[7:0];
+                                        endcase
+                                    end
+                                    TYPE_SH: begin
+                                        if (access_address[1] == 1'b0) begin
+                                            if (access_address[1:0] == 2'b00) seg_data[15:0] <= access_write_data[15:0];
+                                            else seg_data[31:16] <= access_write_data[15:0];
+                                        end
+                                    end
+                                    TYPE_SW: begin
+                                        if (access_address[1:0] == 2'b00) seg_data <= access_write_data;
+                                    end
+                                    default: begin end
+                                endcase
+                            end
+                        end
                     default: begin
                     end
                 endcase
             end
         end
     end
+
+    // 生成 MMIO 读数据
+    assign mmio_rdata = (mmio_access) ? (
+        (access_address == SW_DATA_ADDR)   ? {24'b0, sw_data} :
+        (access_address == LED_DATA_ADDR)   ? ((access_write) ? {24'b0, access_write_data[7:0]} : {24'b0, led_data}) :
+        (access_address == SEG_DATA) ? ((access_write) ? access_write_data : seg_data) :
+        (access_address == TIME_LOW_ADDR)   ? time_value[31:0] :
+        (access_address == TIME_HIGH_ADDR)  ? time_value[63:32] :
+        (access_address == KBD_DATA_ADDR)   ? {24'b0, kbd_data} :
+        (access_address == RAND_NUM_ADDR)   ? rand_num :
+        32'b0
+    ) : 32'b0;
+
+
+    function [31:0] extract_value;
+        input [31:0] data_in;
+        input [2:0]  type_in;
+        input [1:0]  byte_offset;
+        begin
+            case (type_in)
+                TYPE_LB: begin
+                    case (byte_offset)
+                        2'b00: extract_value = {{24{data_in[7]}},  data_in[7:0]};
+                        2'b01: extract_value = {{24{data_in[15]}}, data_in[15:8]};
+                        2'b10: extract_value = {{24{data_in[23]}}, data_in[23:16]};
+                        2'b11: extract_value = {{24{data_in[31]}}, data_in[31:24]};
+                    endcase
+                end
+                TYPE_LH: begin
+                    if (byte_offset[0] == 1'b0) begin
+                        if (byte_offset[1] == 1'b0) begin
+                            extract_value = {{16{data_in[15]}}, data_in[15:0]};
+                        end else begin
+                            extract_value = {{16{data_in[31]}}, data_in[31:16]};
+                        end
+                    end else begin
+                        extract_value = 32'b0;
+                    end
+                end
+                TYPE_LW,
+                TYPE_SW: begin
+                    extract_value = data_in;
+                end
+                TYPE_LBU: begin
+                    case (byte_offset)
+                        2'b00: extract_value = {24'b0, data_in[7:0]};
+                        2'b01: extract_value = {24'b0, data_in[15:8]};
+                        2'b10: extract_value = {24'b0, data_in[23:16]};
+                        2'b11: extract_value = {24'b0, data_in[31:24]};
+                    endcase
+                end
+                TYPE_LHU: begin
+                    if (byte_offset[0] == 1'b0) begin
+                        if (byte_offset[1] == 1'b0) begin
+                            extract_value = {16'b0, data_in[15:0]};
+                        end else begin
+                            extract_value = {16'b0, data_in[31:16]};
+                        end
+                    end else begin
+                        extract_value = 32'b0;
+                    end
+                end
+                default: begin
+                    extract_value = data_in;
+                end
+            endcase
+        end
+    endfunction
+    assign read_data = (mmio_access) ? extract_value(mmio_rdata, access_type, access_address[1:0]) :
+                       (bram_access) ? extract_value(bram_rdata, access_type, access_address[1:0]) :
+                       32'b0;
+
+    assign dmem_rd_data = read_data;
 
 endmodule

@@ -2,7 +2,6 @@
 
 module CPU (
     input        clk,
-    input        clk_bram,
     input        rst_n,
 
     // CPU control
@@ -33,9 +32,9 @@ module CPU (
 
     input [7:0] sw,
     output [7:0] led,
-    input [3:0] seg_sel_left,
+    output [3:0] seg_sel_left,
     output [7:0] seg_data_left,
-    input [3:0] seg_sel_right,
+    output [3:0] seg_sel_right,
     output [7:0] seg_data_right,
     input [63:0] time_value
 );
@@ -88,6 +87,10 @@ module CPU (
     // 指令相关
     wire [31:0] instruction;
     wire [6:0] opcode = instruction[6:0];
+    wire [31:0] pc_address;
+    wire [31:0] branch_imm;
+    wire branch;
+    wire alu_zero;
     
     // 控制信号
     wire ctrl_mem_read, ctrl_mem_write, ctrl_mem_to_reg, ctrl_alu_src, ctrl_reg_write;
@@ -97,10 +100,10 @@ module CPU (
     wire [4:0] rs1, rs2, rd;
     wire [31:0] imm;
     wire [3:0] alu_ctrl_op;
+    wire [2:0] dmem_access_type;
     
     // 寄存器相关
     wire [31:0] reg_read_data1, reg_read_data2;
-    wire [31:0] reg_write_data;
     
     // ALU 相关
     wire [31:0] alu_result;
@@ -108,76 +111,6 @@ module CPU (
     // 数据内存相关
     wire [31:0] mem_read_data;
     
-    // BRAM 相关
-    wire [31:0] mem_rdata_a, mem_rdata_b;
-    wire [14:0] mem_addr_a, mem_addr_b;
-    wire [3:0] mem_we_a, mem_we_b;
-    wire [31:0] mem_wdata_a, mem_wdata_b;
-    
-    // 调试相关
-    wire [14:0] dbg_mem_a_addr, dbg_mem_b_addr;
-    wire [3:0] dbg_mem_a_we, dbg_mem_b_we;
-    wire [31:0] dbg_mem_a_wdata, dbg_mem_b_wdata;
-    wire mem_a_access, mem_b_access;
-    
-    // ==================== Mem 模块（双端口 BRAM）====================
-    
-    // A口地址多选（指令取指 vs 调试）
-    // 可能使用握手会更好
-    reg         inst_dbg_en_r;
-    reg [3:0]   inst_dbg_we_r;
-    reg [14:0]  inst_dbg_addr_r;
-    reg [31:0]  inst_dbg_wdata_r;
-
-    always @(posedge clk_bram) begin
-        inst_dbg_en_r   <= inst_dbg_en;
-        inst_dbg_we_r   <= inst_wr_en ? 4'b1111 : 4'b0000;
-        inst_dbg_addr_r <= {1'b1, inst_dbg_addr[15:2]};
-        inst_dbg_wdata_r<= inst_wr_data;
-    end
-
-    assign mem_a_access = inst_dbg_en_r;
-    assign dbg_mem_a_addr = inst_dbg_addr_r;
-    assign dbg_mem_a_we = inst_dbg_we_r;
-    assign dbg_mem_a_wdata = inst_dbg_wdata_r;
-    
-    // B口地址多选（数据访问 vs 调试）
-    // 可能使用握手会更好
-    reg         dmem_dbg_en_r;
-    reg [3:0]   dmem_dbg_we_r;
-    reg [14:0]  dmem_dbg_addr_r;
-    reg [31:0]  dmem_dbg_wdata_r;
-
-    always @(posedge clk_bram) begin
-        dmem_dbg_en_r    <= dmem_dbg_en;
-        dmem_dbg_we_r    <= dmem_wr_en ? 4'b1111 : 4'b0000;
-        dmem_dbg_addr_r  <= dmem_dbg_addr[16:2];
-        dmem_dbg_wdata_r <= dmem_wr_data;
-    end
-
-    assign mem_b_access = dmem_dbg_en_r;
-    assign dbg_mem_b_addr = dmem_dbg_addr_r;
-    assign dbg_mem_b_we = dmem_dbg_we_r;
-    assign dbg_mem_b_wdata = dmem_dbg_wdata_r;
-    
-    Mem #(
-        .ADDR_WIDTH(15)
-    ) mem_inst (
-        .clk(clk_bram),
-        .wea(mem_a_access ? dbg_mem_a_we : mem_we_a),
-        .addra(mem_a_access ? dbg_mem_a_addr : mem_addr_a),
-        .wdataa(mem_a_access ? dbg_mem_a_wdata : mem_wdata_a),
-        .rdataa(mem_rdata_a),
-        .web(mem_b_access ? dbg_mem_b_we : mem_we_b),
-        .addrb(mem_b_access ? dbg_mem_b_addr : mem_addr_b),
-        .wdatab(mem_b_access ? dbg_mem_b_wdata : mem_wdata_b),
-        .rdatab(mem_rdata_b)
-    );
-    
-    // 调试接口输出
-    assign inst_rd_data = mem_rdata_a;
-    assign dmem_rd_data = mem_rdata_b;
-
     // ==================== PC 模块 ====================
     
     PC pc_inst (
@@ -192,15 +125,16 @@ module CPU (
     assign dbg_pc = pc_address;
 
     // ==================== 指令内存（IMem）====================
-    
     IMem imem_inst (
+        .clk(clk),
         .rst_n(rst_n),
         .address(pc_address),
         .instruction(instruction),
-        .mem_rdata(mem_rdata_a),
-        .mem_addr(mem_addr_a),
-        .mem_we(mem_we_a),
-        .mem_wdata(mem_wdata_a)
+        .inst_dbg_en(inst_dbg_en),
+        .inst_wr_en(inst_wr_en),
+        .inst_dbg_addr(inst_dbg_addr),
+        .inst_wr_data(inst_wr_data),
+        .inst_rd_data(inst_rd_data)
     );
 
     // ==================== 控制单元（Control）====================
@@ -219,7 +153,6 @@ module CPU (
     // ==================== 指令解码（Decoder）====================
     
     Decoder decoder_inst (
-        .alu_op(ctrl_alu_op),
         .instruction(instruction),
         .rs1(rs1),
         .rs2(rs2),
@@ -230,6 +163,7 @@ module CPU (
     
     // 分支地址计算：PC + imm（imm已在解码器中处理为偏移量）
     assign branch_imm = imm;
+    assign dmem_access_type = instruction[14:12];
 
     // ==================== 寄存器文件（Reg）====================
     
@@ -242,7 +176,7 @@ module CPU (
         .reg_write(ctrl_reg_write && cpu_enable),
         .mem_to_reg(ctrl_mem_to_reg),
         .read_data(mem_read_data),
-        .write_data(reg_write_data),
+        .write_data(alu_result),
         .read_data1(reg_read_data1),
         .read_data2(reg_read_data2),
         .dbg_reg_addr(dbg_reg_addr),
@@ -271,6 +205,8 @@ module CPU (
         .rand_num(rand_num)
     );
     
+    wire [31:0] seg_data_32;
+
     DMem dmem_inst (
         .clk(clk),
         .rst_n(rst_n && !cpu_reset),
@@ -279,27 +215,29 @@ module CPU (
         .address(alu_result),
         .write_data(reg_read_data2),
         .read_data(mem_read_data),
-        .mem_rdata(mem_rdata_b),
-        .mem_addr(mem_addr_b),
-        .mem_we(mem_we_b),
-        .mem_wdata(mem_wdata_b),
+        .dbg_en(dmem_dbg_en),
+        .dbg_we(dmem_wr_en),
+        .dbg_addr(dmem_dbg_addr),
+        .dbg_wdata(dmem_wr_data),
         .sw_data(sw),
         .time_value(time_value),
         .kbd_data(8'b0),      // 键盘暂未实现
-        .rand_num(rand_num),  // 连接随机数生成器
+        .rand_num(rand_num),
         .led_data(led),
-        .seg_data(seg_data_left),
-        .seg_an(seg_sel_left)
+        .seg_data(seg_data_32)
     );
-    
-    // 未使用的输出
-    assign seg_data_right = 8'b0;
 
-    // ==================== 最终写回数据选择 ====================
-    
-    // reg_write_data 在 Reg 模块中已通过 mem_to_reg 选择
-    // 此处仅作参考：
-    // assign reg_write_data = ctrl_mem_to_reg ? mem_read_data : alu_result;
+    Seg seg_inst (
+        .clk(clk),
+        .rst_n(rst_n && !cpu_reset),
+        .seg_data(seg_data_32),
+        .seg_data_left(seg_data_left),
+        .seg_sel_left(seg_sel_left),
+        .seg_data_right(seg_data_right),
+        .seg_sel_right(seg_sel_right)
+    );
+
+    assign dmem_rd_data = mem_read_data;
 
 endmodule
 
