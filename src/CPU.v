@@ -215,10 +215,13 @@ module CPU (
         .address(alu_result),
         .write_data(reg_read_data2),
         .read_data(mem_read_data),
-        .dbg_en(dmem_dbg_en),
-        .dbg_we(dmem_wr_en),
-        .dbg_addr(dmem_dbg_addr),
-        .dbg_wdata(dmem_wr_data),
+
+        .dmem_dbg_en(dmem_dbg_en),
+        .dmem_wr_en(dmem_wr_en),
+        .dmem_dbg_addr(dmem_dbg_addr),
+        .dmem_wr_data(dmem_wr_data),
+        .dmem_rd_data(dmem_rd_data),
+
         .sw_data(sw),
         .time_value(time_value),
         .kbd_data(8'b0),      // 键盘暂未实现
