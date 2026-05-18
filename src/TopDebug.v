@@ -122,7 +122,6 @@ DebugController uDebugCtrl (
 
 CPU uCPU (
     .clk          (clk_25m),
-    .clk_bram     (clk_25m),
     .rst_n        (rst_n),
     
     // CPU control
