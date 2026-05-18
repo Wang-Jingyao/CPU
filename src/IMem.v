@@ -56,13 +56,11 @@ module IMem(
     end
 
     // debug: use debug address (read or write) or normal PC address
-
     wire [13:0] rom_addr = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : address[15:2];
     wire        rom_wea = inst_dbg_en_sync & inst_wr_en_sync;
 
     wire [31:0] inst_dout;
     assign inst_rd_data = inst_dout; // debug: read data from uram output
-    assign inst = inst_dout; // normal instruction also from uram output
     Mem #(
         .ADDR_WIDTH(14)
     ) mem_inst (
