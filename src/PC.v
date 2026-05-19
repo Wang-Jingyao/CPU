@@ -1,6 +1,7 @@
 module PC(
     input clk,
     input rst_n,
+    input en,
     input branch,
     input zero,
     input [31:0] imm,
@@ -10,7 +11,7 @@ module PC(
         if (!rst_n) begin
             address <= 32'd0;
         end
-        else begin
+        else if (en) begin
             if (branch && zero) begin
                 address <= address + imm;
             end

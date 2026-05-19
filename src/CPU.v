@@ -116,7 +116,8 @@ module CPU (
     PC pc_inst (
         .clk(clk),
         .rst_n(rst_n && !cpu_reset),
-        .branch(branch && cpu_enable),
+        .en(cpu_enable),
+        .branch(branch),
         .zero(alu_zero),
         .imm(branch_imm),
         .address(pc_address)
