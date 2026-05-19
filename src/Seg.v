@@ -9,6 +9,8 @@ module Seg(
     output reg  [3:0]  seg_sel_right
 );
 
+reg        clk_500hz;
+reg [16:0]  div_cnt_500hz;
 reg [1:0] scan_cnt;
 
 function [7:0] seg_decode;
@@ -37,6 +39,20 @@ function [7:0] seg_decode;
 endfunction
 
 always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        clk_500hz      <= 1'b0;
+        div_cnt_500hz  <= 17'd0;
+    end else begin
+        if (div_cnt_500hz == 17'd99_999) begin
+            div_cnt_500hz <= 17'd0;
+            clk_500hz     <= ~clk_500hz;
+        end else begin
+            div_cnt_500hz <= div_cnt_500hz + 17'd1;
+        end
+    end
+end
+
+always @(posedge clk_500hz or negedge rst_n) begin
     if (!rst_n) begin
         scan_cnt       <= 2'b00;
         seg_sel_left   <= 4'b1111;
