@@ -85,11 +85,12 @@ module DMem(
     localparam [2:0] TYPE_LB  = 3'b000;
     localparam [2:0] TYPE_LH  = 3'b001;
     localparam [2:0] TYPE_LW  = 3'b010;
-    localparam [2:0] TYPE_SB  = 3'b011;
-    localparam [2:0] TYPE_SH  = 3'b100;
-    localparam [2:0] TYPE_SW  = 3'b101;
-    localparam [2:0] TYPE_LBU = 3'b110;
-    localparam [2:0] TYPE_LHU = 3'b111;
+    localparam [2:0] TYPE_LBU = 3'b100;
+    localparam [2:0] TYPE_LHU = 3'b101;
+    localparam [2:0] TYPE_SB  = 3'b000;
+    localparam [2:0] TYPE_SH  = 3'b001;
+    localparam [2:0] TYPE_SW  = 3'b010;
+
 
     // Debug signals synchronized to clk (25MHz) domain
     // DebugController runs at 100MHz, direct access to 25MHz BRAM may cause setup violation
