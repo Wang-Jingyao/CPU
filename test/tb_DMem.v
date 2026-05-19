@@ -34,11 +34,11 @@ module tb_DMem;
     localparam [2:0] TYPE_LB  = 3'b000,
                      TYPE_LH  = 3'b001,
                      TYPE_LW  = 3'b010,
-                     TYPE_SB  = 3'b011,
-                     TYPE_SH  = 3'b100,
-                     TYPE_SW  = 3'b101,
-                     TYPE_LBU = 3'b110,
-                     TYPE_LHU = 3'b111;
+                     TYPE_SB  = 3'b000,
+                     TYPE_SH  = 3'b001,
+                     TYPE_SW  = 3'b010,
+                     TYPE_LBU = 3'b100,
+                     TYPE_LHU = 3'b101;
 
     // --- MMIO 地址常数定义 ---
     localparam [31:0] SW_DATA_ADDR   = 32'h0010_0000,
