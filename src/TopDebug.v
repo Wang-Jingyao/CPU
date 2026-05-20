@@ -8,6 +8,9 @@ module TopDebug (
     output        uart_txd,   // FPGA to PC (EGO1：T4)
     // Switches
     input  [7:0]  sw,         // 拨码开关 (EGO1：P5,P4,P3,P2,R2,M4,N4,R1)
+    // Keyboard
+    input         ps2_clk,
+    input         ps2_data,
     // LEDs
     output [7:0]  led,        // LED指示灯 (EGO1：F6,G4,G3,J4,H4,J3,J2,K2)
     output        halt_led,   // 暂停LED (EGO1：K3)
@@ -152,6 +155,8 @@ CPU uCPU (
     
     // Peripherals
     .sw           (sw),
+    .ps2_clk      (ps2_clk),
+    .ps2_data     (ps2_data),
     .led          (led),
     .seg_sel_left (seg_sel_left),
     .seg_data_left(seg_data_left),

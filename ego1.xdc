@@ -11,6 +11,11 @@ set_property PACKAGE_PIN N5 [get_ports {uart_rxd}]
 set_property PACKAGE_PIN T4 [get_ports {uart_txd}]
 set_property IOSTANDARD LVCMOS33 [get_ports {uart_rxd uart_txd}]
 
+# PS/2 键盘接口 
+set_property PACKAGE_PIN K5 [get_ports {ps2_clk}]
+set_property PACKAGE_PIN L4 [get_ports {ps2_data}]
+set_property IOSTANDARD LVCMOS33 [get_ports {ps2_clk ps2_data}]
+
 # 拨码开关 sw[7:0]
 set_property PACKAGE_PIN P5 [get_ports {sw[7]}]
 set_property PACKAGE_PIN P4 [get_ports {sw[6]}]

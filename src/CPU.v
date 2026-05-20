@@ -36,7 +36,9 @@ module CPU (
     output [7:0] seg_data_left,
     output [3:0] seg_sel_right,
     output [7:0] seg_data_right,
-    input [63:0] time_value
+    input [63:0] time_value,
+    input        ps2_clk,
+    input        ps2_data
 );
 
     // ==================== CPU控制状态机 ====================
@@ -206,6 +208,16 @@ module CPU (
         .rand_num(rand_num)
     );
     
+    // ==================== 键盘输入 ====================
+    wire [7:0] kbd_data;
+    Keyboard kbd_inst (
+        .clk(clk),
+        .rst_n(rst_n && !cpu_reset),
+        .ps2_clk(ps2_clk),
+        .ps2_data(ps2_data),
+        .kbd_data(kbd_data)
+    );
+    
     wire [31:0] seg_data_32;
 
     DMem dmem_inst (
@@ -225,7 +237,7 @@ module CPU (
 
         .sw_data(sw),
         .time_value(time_value),
-        .kbd_data(8'b0),      // 键盘暂未实现
+        .kbd_data(kbd_data),
         .rand_num(rand_num),
         .led_data(led),
         .seg_data(seg_data_32)
