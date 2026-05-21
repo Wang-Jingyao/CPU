@@ -1,7 +1,7 @@
 # 时钟信号 100MHz
-1 set_propery IOSTANDARD LVCOMS33 [get_ports clk_top]
-3 set_propery PACKAGE_PIN P17 [get_ports clk_top]
-5 create_clock -period 10.00 -name clk [get_ports clk_top]
+set_propery IOSTANDARD LVCOMS33 [get_ports clk_top]
+set_propery PACKAGE_PIN P17 [get_ports clk_top]
+create_clock -period 10.00 -name clk [get_ports clk_top]
 
 # 复位按键（低有效）
 set_property PACKAGE_PIN P15  [get_ports {rst_n}]
