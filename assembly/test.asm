@@ -162,15 +162,16 @@ case_9:
     # 右移位数 = 21 - Exp
     li      t5, 21
     sub     t6, t5, t1
-    srl     t7, t4, t6
+    srl     a0, t4, t6
 
     # 无分支求负数补码
-    srai t0, s1, 15
-    xor t7, t7, t0
-    sub t7, t7, t0
+    slli t0, s1, 16
+    srai t0, t0, 31
+    xor a0, a0, t0
+    sub a0, a0, t0
 
     # 截断输出
-    andi s3, t7, 0xFF
+    andi s3, a0, 0xFF
     j default
 # 保存答案，跳转开头
 default:
