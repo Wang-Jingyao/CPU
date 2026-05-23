@@ -39,15 +39,12 @@ module ALU(
     assign zero = zero_comb;
 
     // ALU 运算结果生成（组合逻辑）
-    assign alu_result_comb = (alu_op == 2'b00) ? (operand1 + operand2) :  // 加法类
-                             (alu_op == 2'b01) ? (operand1 - operand2) :  // 减法类
-                             (alu_op == 2'b10) ? (
-                                 (alu_ctrl_op == 4'b0000) ? (operand1 + operand2) :  // add, addi
+    assign alu_result_comb =     (alu_ctrl_op == 4'b0000) ? (operand1 + operand2) :  // add, addi
                                  (alu_ctrl_op == 4'b0001) ? (operand1 - operand2) :  // sub, subi
                                  (alu_ctrl_op == 4'b0010) ? (operand1 & operand2) :  // and, andi
                                  (alu_ctrl_op == 4'b0011) ? (operand1 | operand2) :  // or, ori
                                  (alu_ctrl_op == 4'b0100) ? (operand1 ^ operand2) :  // xor, xori
-                                 (alu_ctrl_op == 4'b0101) ? (operand2 << 12) :        // lui
+                                 (alu_ctrl_op == 4'b0101) ? (operand2) :        // lui
                                  (alu_ctrl_op == 4'b0110) ? (operand1 << operand2[4:0]) :  // sll, slli
                                  (alu_ctrl_op == 4'b0111) ? (operand1 >> operand2[4:0]) :  // srl, srli
                                  (alu_ctrl_op == 4'b1000) ? (($signed(operand1) < $signed(operand2)) ? 32'b1 : 32'b0) :  // slt, slti
@@ -59,8 +56,7 @@ module ALU(
                                  (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 32'b1 : 32'b0) :  // beq
                                  (alu_ctrl_op == 4'b1100) ? ((operand1 != operand2) ? 32'b1 : 32'b0) :  // bne
                                  (alu_ctrl_op == 4'b1101) ? ((operand1 < operand2) ? 32'b1 : 32'b0) :  // blt
-                                 32'b0
-                             ) : 32'b0;
+                                 32'b0;
 
     // Zero 标志生成（组合逻辑）
     assign zero_comb = (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 1'b1 : 1'b0) :

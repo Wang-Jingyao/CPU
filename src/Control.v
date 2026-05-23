@@ -58,6 +58,7 @@ module Control(
             7'b0110111:begin//lui
                 alu_op = 2'b10;
                 reg_write = 1'b1;
+                alu_src = 1'b1;
             end
             7'b0010111:begin//auipc
                 alu_op = 2'b00;
