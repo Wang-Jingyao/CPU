@@ -48,16 +48,16 @@ case_3:
     j default
 # jal+auipc,实现auipc系列操作
 case_4:
-    jal  a0, target
+    jal  t0, target
 target:
-    auipc a1, 0x12345
-    sub s3, a1, a0
-    add s3, s3, t1
+    auipc t1, 0x12345
+    sub s3, t1, t0
+    add s3, s3, s1
     j default
 # jal+jalr,实现函数调用和返回操作，并执行调用后的下一条加法运算
 case_5:
     jal func
-    add s3, t1, t2
+    add s3, s1, s2
     j default
 func:     jr ra
 # 实现斐波拉契数列计算，输入斐波拉契数列中数字的下标，
@@ -65,7 +65,7 @@ func:     jr ra
 # 如输入1；输出1；输入2，输出1；输入4，输出3
 case_6:
     li t0, 1
-    beq s1，t0, fib_base
+    beq s1, t0, fib_base
     li t0, 2
     beq s1, t0, fib_base
     li t1, 1
