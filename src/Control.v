@@ -6,7 +6,9 @@ module Control(
     output reg [1:0] alu_op,
     output reg mem_write,
     output reg alu_src,
-    output reg reg_write
+    output reg reg_write,
+    output reg jal_en,
+    output reg jalr_en
 );
 
     always @(*) begin
@@ -17,6 +19,8 @@ module Control(
         mem_write = 1'b0;
         alu_src = 1'b0;
         reg_write = 1'b0;
+        jal_en = 1'b0;
+        jalr_en = 1'b0;
 
         case(opcode)
             7'b0110011:begin//R-type
@@ -48,12 +52,14 @@ module Control(
                 alu_op = 2'b10;
                 branch = 1'b1;
                 reg_write = 1'b1;
+                jal_en = 1'b1;
             end
             7'b1100111:begin//jalr
                 alu_op = 2'b00;
                 branch = 1'b1;
                 alu_src = 1'b1;
                 reg_write = 1'b1;
+                jalr_en = 1'b1;
             end
             7'b0110111:begin//lui
                 alu_op = 2'b10;

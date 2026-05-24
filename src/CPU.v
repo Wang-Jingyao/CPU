@@ -95,7 +95,7 @@ module CPU (
     wire alu_zero;
     
     // 控制信号
-    wire ctrl_mem_read, ctrl_mem_write, ctrl_mem_to_reg, ctrl_alu_src, ctrl_reg_write;
+    wire ctrl_mem_read, ctrl_mem_write, ctrl_mem_to_reg, ctrl_alu_src, ctrl_reg_write, jal_enable, jalr_enable;
     wire [1:0] ctrl_alu_op;
     
     // 解码相关
@@ -112,6 +112,10 @@ module CPU (
     
     // 数据内存相关
     wire [31:0] mem_read_data;
+
+    // jal相关
+    wire [31:0] jal_address;
+    wire [31:0] write_reg;
     
     // ==================== PC 模块 ====================
     
@@ -119,9 +123,13 @@ module CPU (
         .clk(clk),
         .rst_n(rst_n && !cpu_reset),
         .en(cpu_enable),
+        .jal_en(jal_enable),
+        .jalr_en(jalr_enable),
+        .rs1(reg_read_data1),
         .branch(branch),
         .zero(alu_zero),
         .imm(branch_imm),
+        .rd_add(jal_address),
         .address(pc_address)
     );
     
@@ -150,7 +158,9 @@ module CPU (
         .alu_op(ctrl_alu_op),
         .mem_write(ctrl_mem_write),
         .alu_src(ctrl_alu_src),
-        .reg_write(ctrl_reg_write)
+        .reg_write(ctrl_reg_write),
+        .jal_en(jal_enable),
+        .jalr_en(jalr_enable)
     );
 
     // ==================== 指令解码（Decoder）====================
@@ -170,6 +180,8 @@ module CPU (
 
     // ==================== 寄存器文件（Reg）====================
     
+    assign write_reg = (jal_enable || jalr_enable) ? jal_address : alu_result;
+
     Reg reg_inst (
         .clk(clk),
         .rst_n(rst_n && !cpu_reset),
@@ -179,7 +191,7 @@ module CPU (
         .reg_write(ctrl_reg_write && cpu_enable),
         .mem_to_reg(ctrl_mem_to_reg),
         .read_data(mem_read_data),
-        .write_data(alu_result),
+        .write_data(write_reg),
         .read_data1(reg_read_data1),
         .read_data2(reg_read_data2),
         .dbg_reg_addr(dbg_reg_addr),
