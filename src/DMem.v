@@ -76,11 +76,11 @@ module DMem(
 );
     localparam [31:0] SW_DATA_ADDR   = 32'h0010_0000;
     localparam [31:0] LED_DATA_ADDR  = 32'h0010_0004;
-    localparam [31:0] SEG_DATA       = 32'h0010_0008;
-    localparam [31:0] TIME_LOW_ADDR   = 32'h0010_000C;
-    localparam [31:0] TIME_HIGH_ADDR  = 32'h0010_0010;
-    localparam [31:0] KBD_DATA_ADDR   = 32'h0010_0014;
-    localparam [31:0] RAND_NUM_ADDR   = 32'h0010_0018;
+    localparam [31:0] SEG_DATA_ADDR  = 32'h0010_0008;
+    localparam [31:0] TIME_LOW_ADDR  = 32'h0010_000C;
+    localparam [31:0] TIME_HIGH_ADDR = 32'h0010_0010;
+    localparam [31:0] KBD_DATA_ADDR  = 32'h0010_0014;
+    localparam [31:0] RAND_NUM_ADDR  = 32'h0010_0018;
 
     localparam [2:0] TYPE_LB  = 3'b000;
     localparam [2:0] TYPE_LH  = 3'b001;
@@ -120,7 +120,7 @@ module DMem(
 
     wire bram_access = (access_address[31:16] == 16'h0000);
     wire mmio_access  = (access_address[31:16] == 16'h0010);
-    wire seg_access   = mmio_access && (access_address[31:2] == SEG_DATA[31:2]);
+    wire seg_access   = mmio_access && (access_address[31:2] == SEG_DATA_ADDR[31:2]);
     wire [13:0] bram_addr = access_address[15:2];
 
     reg [3:0]  bram_we_r;
@@ -181,7 +181,7 @@ module DMem(
     Mem #(
         .ADDR_WIDTH(14)
     ) mem_inst (
-        .clk   (clk),
+        .clk   (~clk),
         .wea   (bram_we_r),
         .addra (bram_addr),
         .wdataa(bram_wdata_r),

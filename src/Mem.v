@@ -47,7 +47,7 @@ module Mem #(
         end
     end
 
-    always @(negedge clk) begin
+    always @(posedge clk) begin
         rdataa <= mem[addra];
         if (wea[3]) mem[addra][31:24] <= wdataa[31:24];
         if (wea[2]) mem[addra][23:16] <= wdataa[23:16];
@@ -55,7 +55,7 @@ module Mem #(
         if (wea[0]) mem[addra][7:0]   <= wdataa[7:0];
     end
 
-    always @(negedge clk) begin
+    always @(posedge clk) begin
         rdatab <= mem[addrb];
         if (web[3]) mem[addrb][31:24] <= wdatab[31:24];
         if (web[2]) mem[addrb][23:16] <= wdatab[23:16];
