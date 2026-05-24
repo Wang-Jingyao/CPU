@@ -8,7 +8,8 @@ module Control(
     output reg alu_src,
     output reg reg_write,
     output reg jal_en,
-    output reg jalr_en
+    output reg jalr_en,
+    output reg auipc_en
 );
 
     always @(*) begin
@@ -21,6 +22,7 @@ module Control(
         reg_write = 1'b0;
         jal_en = 1'b0;
         jalr_en = 1'b0;
+        auipc_en = 1'b0;
 
         case(opcode)
             7'b0110011:begin//R-type
@@ -69,6 +71,7 @@ module Control(
             7'b0010111:begin//auipc
                 alu_op = 2'b00;
                 reg_write = 1'b1;
+                auipc_en = 1'b1;
             end
             default: begin
             end

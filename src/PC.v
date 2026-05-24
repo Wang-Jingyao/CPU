@@ -4,6 +4,7 @@ module PC(
     input en,
     input jal_en,
     input jalr_en,
+    input auipc_en,
     input [31:0] rs1,
     input branch,
     input zero,
@@ -27,6 +28,10 @@ module PC(
                 else if (jalr_en) begin
                     rd_add <= address + 32'd4;
                     address <= (rs1 + imm) & 32'hfffffffe;
+                end
+                else if (auipc_en) begin
+                    rd_add <= address + imm;
+                    address <= address + 32'd4;
                 end
                 else begin
                     address <= address + 32'd4;
