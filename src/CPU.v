@@ -192,7 +192,7 @@ module CPU (
         .alu_op(ctrl_alu_op),
         .alu_ctrl_op(alu_ctrl_op),
         .alu_src(ctrl_alu_src),
-        .read_data1(reg_read_data1),
+        .read_data1((opcode == 7'b0010111) ? pc_address : reg_read_data1),
         .read_data2(reg_read_data2),
         .imm(imm),
         .zero(alu_zero),

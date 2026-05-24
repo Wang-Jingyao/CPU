@@ -86,7 +86,10 @@ module Decoder(
                 case(func[2:0])
                     3'b000:alu_ctrl_op=4'b1011;//beq
                     3'b001:alu_ctrl_op=4'b1100;//bne
-                    3'b100:alu_ctrl_op=4'b1101;
+                    3'b100:alu_ctrl_op=4'b1101;//blt
+                    3'b101:alu_ctrl_op=4'b1110;//bge
+                    3'b110:alu_ctrl_op=4'b1010;//bltu
+                    3'b111:alu_ctrl_op=4'b1111;//bgeu
                 endcase
             end
             7'b1101111:begin//jal
