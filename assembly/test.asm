@@ -65,9 +65,9 @@ func:     jr ra
 # 如输入1；输出1；输入2，输出1；输入4，输出3
 case_6:
     li t0, 1
-    beq s0, t0, fib_base
+    beq s1，t0, fib_base
     li t0, 2
-    beq s0, t0, fib_base
+    beq s1, t0, fib_base
     li t1, 1
     li t2, 1
     li t3, 3
