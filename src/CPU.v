@@ -53,7 +53,7 @@ module CPU (
     // CPU状态机
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n || cpu_reset) begin
-            cpu_state <= CPU_RUNNING;
+            cpu_state <= CPU_HALTED;
             step_done <= 1'b0;
         end else begin
             case (cpu_state)
@@ -78,7 +78,7 @@ module CPU (
                     step_done <= 1'b0;
                 end
                 
-                default: cpu_state <= CPU_RUNNING;
+                default: cpu_state <= CPU_HALTED;
             endcase
         end
     end
