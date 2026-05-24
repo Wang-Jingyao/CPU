@@ -55,18 +55,13 @@ module ALU(
                                  (alu_ctrl_op == 4'b1010) ? ((operand1 < operand2) ? 32'b1 : 32'b0) :  // sltu, sltui
                                  (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 32'b1 : 32'b0) :  // beq
                                  (alu_ctrl_op == 4'b1100) ? ((operand1 != operand2) ? 32'b1 : 32'b0) :  // bne
-                                 (alu_ctrl_op == 4'b1101) ? (($signed(operand1) < $signed(operand2)) ? 32'b1 : 32'b0) :  // blt
-                                 (alu_ctrl_op == 4'b1110) ? (($signed(operand1) >= $signed(operand2)) ? 32'b1 : 32'b0) : // bge
-                                 (alu_ctrl_op == 4'b1111) ? ((operand1 >= operand2) ? 32'b1 : 32'b0) :  // bgeu
+                                 (alu_ctrl_op == 4'b1101) ? ((operand1 < operand2) ? 32'b1 : 32'b0) :  // blt
                                  32'b0;
 
     // Zero 标志生成（组合逻辑）
     assign zero_comb = (alu_ctrl_op == 4'b1011) ? ((operand1 == operand2) ? 1'b1 : 1'b0) :
                        (alu_ctrl_op == 4'b1100) ? ((operand1 != operand2) ? 1'b1 : 1'b0) : 
-                       (alu_ctrl_op == 4'b1101) ? (($signed(operand1) < $signed(operand2)) ? 1'b1 : 1'b0) :
-                       (alu_ctrl_op == 4'b1110) ? (($signed(operand1) >= $signed(operand2)) ? 1'b1 : 1'b0) : // bge
-                       (alu_ctrl_op == 4'b1010) ? ((operand1 < operand2) ? 1'b1 : 1'b0) :      // bltu
-                       (alu_ctrl_op == 4'b1111) ? ((operand1 >= operand2) ? 1'b1 : 1'b0) :     // bgeu
+                       (alu_ctrl_op == 4'b1101) ? ((operand1 < operand2) ? 1'b1 : 1'b0) :
                        1'b0;    // 其他: 结果为0表示zero成立
 
 endmodule
