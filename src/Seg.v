@@ -57,8 +57,8 @@ always @(posedge clk_1khz or negedge rst_n) begin
         scan_cnt       <= 2'b00;
         seg_sel_left   <= 4'b1111;
         seg_sel_right  <= 4'b1111;
-        seg_data_left  <= 8'hff;
-        seg_data_right <= 8'hff;
+        seg_data_left  <= 8'h00;
+        seg_data_right <= 8'h00;
     end else begin
         scan_cnt <= scan_cnt + 2'b01;
 
