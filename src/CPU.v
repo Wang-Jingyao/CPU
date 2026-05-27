@@ -229,11 +229,17 @@ module CPU (
     
     // ==================== 键盘输入 ====================
     wire [7:0] kbd_data;
+    wire kbd_re;
+    localparam [31:0] KBD_DATA_ADDR = 32'h0010_0014;
+
+    assign kbd_re = ctrl_mem_read && cpu_enable && (alu_result == KBD_DATA_ADDR);
+
     Keyboard kbd_inst (
         .clk(clk),
         .rst_n(rst_n && !cpu_reset),
         .ps2_clk(ps2_clk),
         .ps2_data(ps2_data),
+        .re(kbd_re),
         .kbd_data(kbd_data)
     );
     
