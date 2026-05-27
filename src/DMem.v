@@ -5,6 +5,7 @@
  *
  * 内存模型约定：
  *   1. BRAM 数据区：0x0000_0000 ~ 0x0000_FFFF，交由内部 Mem 处理。
+ *      - 0x0000_F000 ~ 0x0000_FFFF 预留为 ecall 代码/数据区。
  *   2. MMIO 地址空间：0x0010_0000 起，不占用 BRAM，由本模块直接实现。
  *   3. MMIO 寄存器映射如下：
  *      - 0x0010_0000 SW_DATA    [7:0]  ：8 位拨码开关输入，只读
@@ -179,7 +180,9 @@ module DMem(
     end
 
     Mem #(
-        .ADDR_WIDTH(14)
+        .ADDR_WIDTH(14),
+        .INIT_FILE("ecall.txt"),
+        .INIT_START(14'h3c00)
     ) mem_inst (
         .clk   (~clk),
         .wea   (bram_we_r),

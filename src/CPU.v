@@ -89,6 +89,11 @@ module CPU (
     // 指令相关
     wire [31:0] instruction;
     wire [6:0] opcode = instruction[6:0];
+    wire ecall_inst = (opcode == 7'b1110011) &&
+                      (instruction[31:20] == 12'b0) &&
+                      (instruction[19:15] == 5'b0) &&
+                      (instruction[14:12] == 3'b0) &&
+                      (instruction[11:7] == 5'b0);
     wire [31:0] pc_address;
     wire [31:0] branch_imm;
     wire branch;
@@ -130,7 +135,7 @@ module CPU (
         .branch(branch),
         .zero(alu_zero),
         .imm(branch_imm),
-        .rd_add(jal_address),
+        .ecall_en(ecall_inst),
         .address(pc_address)
     );
     
@@ -182,7 +187,7 @@ module CPU (
 
     // ==================== 寄存器文件（Reg）====================
     
-    assign write_reg = (jal_enable || jalr_enable || auipc_enable) ? jal_address : alu_result;
+    assign write_reg = (jal_enable || jalr_enable || auipc_enable || ecall_inst) ? jal_address : alu_result;
 
     Reg reg_inst (
         .clk(clk),
@@ -190,7 +195,7 @@ module CPU (
         .rs1(rs1),
         .rs2(rs2),
         .rd(rd),
-        .reg_write(ctrl_reg_write && cpu_enable),
+        .reg_write((ctrl_reg_write || ecall_inst) && cpu_enable),
         .mem_to_reg(ctrl_mem_to_reg),
         .read_data(mem_read_data),
         .write_data(write_reg),

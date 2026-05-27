@@ -20,7 +20,8 @@
  ******************************************************************************/
 module Mem #(
     parameter ADDR_WIDTH = 14,
-    parameter INIT_FILE  = ""
+    parameter INIT_FILE  = "",
+    parameter INIT_START = 0
 )(
     input  wire                  clk,
     
@@ -43,7 +44,7 @@ module Mem #(
             mem[i] = 32'b0;
         end
         if (INIT_FILE != "") begin
-            $readmemh(INIT_FILE, mem);
+            $readmemh(INIT_FILE, mem, INIT_START);
         end
     end
 
