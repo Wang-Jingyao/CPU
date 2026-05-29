@@ -27,17 +27,17 @@ module ClockTimer(
         .I(clk_25m_logic)
     );
 
-    reg [6:0] cnt_1us;
+    reg [16:0] cnt_1ms;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            cnt_1us    <= 7'd0;
+            cnt_1ms    <= 17'd0;
             time_value <= 64'b0;
         end else begin
-            if (cnt_1us >= 7'd99) begin
-                cnt_1us    <= 7'd0;
-                time_value <= time_value + 64'b1;
+            if (cnt_1ms >= 17'd99999) begin
+                cnt_1ms    <= 17'd0;
+                time_value <= time_value + 64'b1; // increment in milliseconds
             end else begin
-                cnt_1us    <= cnt_1us + 7'd1;
+                cnt_1ms    <= cnt_1ms + 17'd1;
             end
         end
     end

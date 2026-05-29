@@ -4,9 +4,7 @@ module tb_Timer();
 
     reg clk;
     reg rst_n;
-    wire clk_50m;
     wire clk_25m;
-    wire clk_1m;
     wire [63:0] time_value;
     
     // 定义仿真模式
@@ -16,9 +14,7 @@ module tb_Timer();
     ClockTimer uut (
         .clk(clk),
         .rst_n(rst_n),
-        .clk_50m(clk_50m),
         .clk_25m(clk_25m),
-        .clk_1m(clk_1m),
         .time_value(time_value)
     );
     
@@ -51,38 +47,37 @@ module tb_Timer();
         $finish;
     end
     
-    // 实时显示 time_value
-    always @(posedge clk_1m) begin
-        if (time_value % 10 == 0 && time_value != 0) begin
-            $display("[Time %0t] time_value = %d (seconds: %0.2f)", 
-                     $time, time_value, time_value / 1000000.0);
+    // 实时显示 time_value（单位：毫秒），每当 time_value 改变时检查并每 1000 ms 打印一次
+    reg [63:0] prev_time;
+    initial prev_time = 64'd0;
+    always @(posedge clk) begin
+        if (time_value != prev_time) begin
+            if (time_value % 1000 == 0) begin
+                $display("[Time %0t] time_value = %d (seconds: %0.3f)", 
+                         $time, time_value, time_value / 1000.0);
+            end
+            prev_time = time_value;
         end
     end
     
     // 测量时钟频率
-    integer clk_50m_count = 0;
     integer clk_25m_count = 0;
-    integer clk_1m_count = 0;
     real start_time;
     
     initial begin
         start_time = $time;
-        #100000;  // 测量 100us
-        
-        $display("\nClock Cycle Counts over 100us:");
-        $display("  clk_50m cycles: %0d (expected ~5000)", clk_50m_count);
-        $display("  clk_25m cycles: %0d (expected ~2500)", clk_25m_count);
-        $display("  clk_1m cycles:  %0d (expected ~100)", clk_1m_count);
-        
-        $display("\nFinal time_value = %d (should be ~100)", time_value);
-        
+        #1000000;  // 测量 1ms
+
+        $display("\nClock Cycle Counts over 1ms:");
+        $display("  clk_25m cycles: %0d (expected ~25000)", clk_25m_count);
+
+        $display("\nFinal time_value = %d (should be ~1)", time_value);
+
         #1000;
         $finish;
     end
-    
-    always @(posedge clk_50m) clk_50m_count = clk_50m_count + 1;
+
     always @(posedge clk_25m) clk_25m_count = clk_25m_count + 1;
-    always @(posedge clk_1m) clk_1m_count = clk_1m_count + 1;
     
     // 波形输出
     initial begin
