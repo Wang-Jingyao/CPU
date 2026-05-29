@@ -1,8 +1,19 @@
 .text
 ecall:
-    # 保存 ra
-    addi sp, sp, -4
+    # 保存 ecall 会用到的寄存器
+    addi sp, sp, -48
     sw ra, 0(sp)
+    sw a0, 4(sp)
+    sw a1, 8(sp)
+    sw a2, 12(sp)
+    sw a7, 16(sp)
+    sw t0, 20(sp)
+    sw t1, 24(sp)
+    sw t2, 28(sp)
+    sw t3, 32(sp)
+    sw t4, 36(sp)
+    sw t5, 40(sp)
+    sw t6, 44(sp)
     
     # 根据 a7 的值跳转到对应的系统调用处理函数
     li t0, 1
@@ -21,7 +32,7 @@ ecall:
     beq a7, t0, sys_rand_int
     
     # 未知系统调用号则直接返回
-    j end_ecall
+    j end_ecall_no_ret
 
 # == Service 1: Print Integer (Decimal) ==
 sys_print_int:
@@ -41,7 +52,7 @@ print_int_loop:
 
     lui t0, 0x100
     sw t5, 8(t0)      # SEG_DATA (0x00100008)
-    j end_ecall
+    j end_ecall_no_ret
 div10:
     # a0 = a0 / 10
     # a1 = a0 % 10
@@ -95,7 +106,7 @@ read_int_done:
     beq t4, zero, read_int_pos
     sub a0, zero, a0
 read_int_pos:
-    j end_ecall
+    j end_ecall_ret
 
 # == Service 10: Exit ==
 sys_exit:
@@ -107,11 +118,11 @@ sys_read_char:
 read_char_loop:
     lw a0, 0x14(t6)   # KBD_DATA (0x00100014)
     beq a0, zero, read_char_loop
-    j end_ecall
+    j end_ecall_ret
 
 # == Service 32: Sleep ==
 sys_sleep:
-    beq a0, zero, end_ecall
+    beq a0, zero, end_ecall_no_ret
     mv t2, a0
     lui t6, 0x100
 get_init_time:
@@ -131,24 +142,51 @@ sleep_check:
     sub t5, t5, t4
     sub t5, t5, a2
 
-    bne t5, zero, end_ecall
+    bne t5, zero, end_ecall_no_ret
     bltu t1, t2, sleep_check
-    j end_ecall
+    j end_ecall_no_ret
 
 # == Service 34: Print Integer Hex ==
 sys_print_int_hex:
     lui t6, 0x100
     sw a0, 8(t6)      # SEG_DATA (0x00100008)
-    j end_ecall
+    j end_ecall_no_ret
 
 # == Service 41: Rand Integer ==
 sys_rand_int:
     lui t6, 0x100
     lw a0, 0x18(t6)   # RAND_NUM (0x00100018)
-    j end_ecall
+    j end_ecall_ret
 
-end_ecall:
-    # 恢复 ra 并返回
+end_ecall_no_ret:
+    # 恢复寄存器并返回，a0 也恢复成调用前的值
     lw ra, 0(sp)
-    addi sp, sp, 4
+    lw a0, 4(sp)
+    lw a1, 8(sp)
+    lw a2, 12(sp)
+    lw a7, 16(sp)
+    lw t0, 20(sp)
+    lw t1, 24(sp)
+    lw t2, 28(sp)
+    lw t3, 32(sp)
+    lw t4, 36(sp)
+    lw t5, 40(sp)
+    lw t6, 44(sp)
+    addi sp, sp, 48
+    jr ra
+
+end_ecall_ret:
+    # 恢复寄存器并返回，a0 保留系统调用结果
+    lw ra, 0(sp)
+    lw a1, 8(sp)
+    lw a2, 12(sp)
+    lw a7, 16(sp)
+    lw t0, 20(sp)
+    lw t1, 24(sp)
+    lw t2, 28(sp)
+    lw t3, 32(sp)
+    lw t4, 36(sp)
+    lw t5, 40(sp)
+    lw t6, 44(sp)
+    addi sp, sp, 48
     jr ra
