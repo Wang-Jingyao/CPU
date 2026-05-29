@@ -6,14 +6,13 @@ ecall:
     sw a0, 4(sp)
     sw a1, 8(sp)
     sw a2, 12(sp)
-    sw a7, 16(sp)
-    sw t0, 20(sp)
-    sw t1, 24(sp)
-    sw t2, 28(sp)
-    sw t3, 32(sp)
-    sw t4, 36(sp)
-    sw t5, 40(sp)
-    sw t6, 44(sp)
+    sw t0, 16(sp)
+    sw t1, 20(sp)
+    sw t2, 24(sp)
+    sw t3, 28(sp)
+    sw t4, 32(sp)
+    sw t5, 36(sp)
+    sw t6, 40(sp)
     
     # 根据 a7 的值跳转到对应的系统调用处理函数
     li t0, 1
@@ -137,8 +136,8 @@ sleep_check:
     lw a1, 0x10(t6)         # 再次读取 TIME_HIGH 验证
     bne t5, a1, sleep_check
 
-    sub t1, t1, t3
     sltu a2, t1, t3
+    sub t1, t1, t3
     sub t5, t5, t4
     sub t5, t5, a2
 
@@ -159,34 +158,17 @@ sys_rand_int:
     j end_ecall_ret
 
 end_ecall_no_ret:
-    # 恢复寄存器并返回，a0 也恢复成调用前的值
-    lw ra, 0(sp)
     lw a0, 4(sp)
-    lw a1, 8(sp)
-    lw a2, 12(sp)
-    lw a7, 16(sp)
-    lw t0, 20(sp)
-    lw t1, 24(sp)
-    lw t2, 28(sp)
-    lw t3, 32(sp)
-    lw t4, 36(sp)
-    lw t5, 40(sp)
-    lw t6, 44(sp)
-    addi sp, sp, 48
-    jr ra
-
 end_ecall_ret:
-    # 恢复寄存器并返回，a0 保留系统调用结果
     lw ra, 0(sp)
     lw a1, 8(sp)
     lw a2, 12(sp)
-    lw a7, 16(sp)
-    lw t0, 20(sp)
-    lw t1, 24(sp)
-    lw t2, 28(sp)
-    lw t3, 32(sp)
-    lw t4, 36(sp)
-    lw t5, 40(sp)
-    lw t6, 44(sp)
+    lw t0, 16(sp)
+    lw t1, 20(sp)
+    lw t2, 24(sp)
+    lw t3, 28(sp)
+    lw t4, 32(sp)
+    lw t5, 36(sp)
+    lw t6, 40(sp)
     addi sp, sp, 48
-    jr ra
+    ret
