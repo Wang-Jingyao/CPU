@@ -5,6 +5,7 @@
  *
  * 内存模型约定：
  *   1. CPU 的指令地址空间为 0x0000_0000 ~ 0x0000_FFFF。
+ *      0x0000_F000 ~ 0x0000_FFFF 预留为 ecall 代码区。
  *   2. 取指地址必须按字对齐输入，本模块使用 address[15:2] 作为字地址。
  *   3. 指令读取由内部 Mem 完成，读数据在时钟沿后有效。
  *   4. 调试读写使能与地址/数据在本模块内部同步到 clk 域。
@@ -62,7 +63,9 @@ module IMem(
     wire [31:0] inst_dout;
     assign inst_rd_data = inst_dout; // debug: read data from uram output
     Mem #(
-        .ADDR_WIDTH(14)
+        .ADDR_WIDTH(14),
+        .INIT_FILE("ecall.txt"),
+        .INIT_START(14'h3c00)
     ) mem_inst (
         .clk   (clk),
         .wea   (rom_wea),
