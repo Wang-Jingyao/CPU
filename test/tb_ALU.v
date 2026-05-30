@@ -255,6 +255,8 @@ module tb_ALU;
         alu_ctrl_op = 5'b10111; // REMU
         read_data1 = 32'd9; read_data2 = 32'd2;
         check_output(32'd1, 1'b0, "REMU: 9%2 = 1");
+        read_data1 = 32'h8000_0000; read_data2 = 32'h8000_0001;
+        check_output(32'h8000_0000, 1'b0, "REMU: dividend less than high-bit divisor keeps dividend");
         read_data1 = 32'd7; read_data2 = 32'd0;
         check_output(32'd7, 1'b0, "REMU: divide by zero returns dividend");
 

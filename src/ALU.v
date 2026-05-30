@@ -102,16 +102,24 @@ module ALU(
         begin
             remainder = 33'b0;
             quotient = 32'b0;
-            // 使用正向循环并显式计算被除数位序，避免综合器把
-            // “i >= 0” 的递减循环误判为非终止循环。
-            for (i = 0; i < 32; i = i + 1) begin
-                remainder = {remainder[31:0], dividend[31 - i]};
-                if (remainder >= {1'b0, divisor}) begin
-                    remainder = remainder - {1'b0, divisor};
-                    quotient[31 - i] = 1'b1;
+            if (dividend < divisor) begin
+                // 被除数小于除数时，商必为 0，余数必须保持为被除数。
+                // 这个快速路径也避免最高位为 1 的除数在部分综合/仿真工具中
+                // 被错误地按有符号数处理，导致 REMU 0x80000000 % 0x80000001
+                // 错算为 0。
+                div_rem_unsigned = {32'b0, dividend};
+            end else begin
+                // 使用正向循环并显式计算被除数位序，避免综合器把
+                // “i >= 0” 的递减循环误判为非终止循环。
+                for (i = 0; i < 32; i = i + 1) begin
+                    remainder = {remainder[31:0], dividend[31 - i]};
+                    if (remainder >= {1'b0, divisor}) begin
+                        remainder = remainder - {1'b0, divisor};
+                        quotient[31 - i] = 1'b1;
+                    end
                 end
+                div_rem_unsigned = {quotient, remainder[31:0]};
             end
-            div_rem_unsigned = {quotient, remainder[31:0]};
         end
     endfunction
 
