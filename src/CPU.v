@@ -106,7 +106,7 @@ module CPU (
     // 解码相关
     wire [4:0] rs1, rs2, rd;
     wire [31:0] imm;
-    wire [3:0] alu_ctrl_op;
+    wire [4:0] alu_ctrl_op;
     wire [2:0] dmem_access_type;
     
     // 寄存器相关
