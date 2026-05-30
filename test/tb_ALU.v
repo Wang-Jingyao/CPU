@@ -229,6 +229,10 @@ module tb_ALU;
 
         // 3.16 RV32M 除法/取余扩展
         alu_ctrl_op = 5'b10100; // DIV
+        read_data1 = 32'd15; read_data2 = 32'd3;
+        check_output(32'd5, 1'b0, "DIV: 15/3 = 5");
+        read_data1 = 32'd15; read_data2 = 32'd4;
+        check_output(32'd3, 1'b0, "DIV: 15/4 truncates toward zero");
         read_data1 = 32'hFFFF_FFF7; read_data2 = 32'd2; // -9 / 2 = -4 (toward zero)
         check_output(32'hFFFF_FFFC, 1'b0, "DIV: -9/2 truncates toward zero");
         read_data1 = 32'h8000_0000; read_data2 = 32'hFFFF_FFFF;
