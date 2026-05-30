@@ -92,7 +92,8 @@ module ALU(
     endfunction
 
     // 恢复除法器，用组合逻辑实现 32 位无符号除法，避免直接使用 / 与 % 运算符。
-    function [31:0] div_unsigned;
+
+    function [63:0] div_rem_unsigned;
         input [31:0] dividend;
         input [31:0] divisor;
         integer i;
@@ -101,17 +102,29 @@ module ALU(
         begin
             remainder = 33'b0;
             quotient = 32'b0;
+            // 使用正向循环并显式计算被除数位序，避免综合器把
+            // “i >= 0” 的递减循环误判为非终止循环。
+            for (i = 0; i < 32; i = i + 1) begin
+                remainder = {remainder[31:0], dividend[31 - i]};
+                if (remainder >= {1'b0, divisor}) begin
+                    remainder = remainder - {1'b0, divisor};
+                    quotient[31 - i] = 1'b1;
+                end
+            end
+            div_rem_unsigned = {quotient, remainder[31:0]};
+        end
+    endfunction
+
+    function [31:0] div_unsigned;
+        input [31:0] dividend;
+        input [31:0] divisor;
+        reg [63:0] divrem;
+        begin
             if (divisor == 32'b0) begin
                 div_unsigned = 32'hffff_ffff;
             end else begin
-                for (i = 31; i >= 0; i = i - 1) begin
-                    remainder = {remainder[31:0], dividend[i]};
-                    if (remainder >= {1'b0, divisor}) begin
-                        remainder = remainder - {1'b0, divisor};
-                        quotient[i] = 1'b1;
-                    end
-                end
-                div_unsigned = quotient;
+                divrem = div_rem_unsigned(dividend, divisor);
+                div_unsigned = divrem[63:32];
             end
         end
     endfunction
@@ -119,20 +132,13 @@ module ALU(
     function [31:0] rem_unsigned;
         input [31:0] dividend;
         input [31:0] divisor;
-        integer i;
-        reg [32:0] remainder;
+        reg [63:0] divrem;
         begin
-            remainder = 33'b0;
             if (divisor == 32'b0) begin
                 rem_unsigned = dividend;
             end else begin
-                for (i = 31; i >= 0; i = i - 1) begin
-                    remainder = {remainder[31:0], dividend[i]};
-                    if (remainder >= {1'b0, divisor}) begin
-                        remainder = remainder - {1'b0, divisor};
-                    end
-                end
-                rem_unsigned = remainder[31:0];
+                divrem = div_rem_unsigned(dividend, divisor);
+                rem_unsigned = divrem[31:0];
             end
         end
     endfunction
